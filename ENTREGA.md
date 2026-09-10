@@ -56,7 +56,13 @@
 - [ ] Mover el usuario a `editores`, re-loguear, `POST /productos` → **201/200**
 - [ ] El servicio ECS con la task en **RUNNING** y el health check verde
 
-## Fase G · Presentación EP2 (5–10 min, en vivo en la nube)
+## Fase G · Entregar EP1 (formal)
+
+- [ ] Copiar el link del repo (`https://github.com/cristobal-duoc/pedidos360-ea1`) a **AVA**
+- [ ] Enviar el link por **correo al docente**
+- [ ] Repo privado con el docente agregado como colaborador (o público)
+
+## Fase H · Presentación EP2 (5–10 min, en vivo en la nube)
 
 - [ ] El API Manager creado y en funcionamiento (consola AWS)
 - [ ] El front (Amplify) consumiendo la API a través del API Gateway
