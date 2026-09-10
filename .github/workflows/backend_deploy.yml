@@ -1,0 +1,37 @@
+name: backend_deploy
+
+on:
+  workflow_dispatch: {}
+  # push: { branches: [main], paths: ["backend/**"] }
+
+# Necesita los 3 secretos del repo (Settings -> Secrets and variables -> Actions):
+#   AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_SESSION_TOKEN
+# Se vencen cada sesión del Learner Lab: actualízalos antes de correr.
+env:
+  ESTUDIANTE: martinez            # cámbialo por el tuyo
+  AWS_REGION: us-east-1
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - uses: aws-actions/amazon-ecr-login@v2
+        id: ecr
+
+      - name: Construir, subir imagen y redesplegar
+        run: |
+          ECR="${{ steps.ecr.outputs.registry }}/dsy1107-backend-${ESTUDIANTE}"
+          docker build --platform linux/amd64 -t "$ECR:latest" backend
+          docker push "$ECR:latest"
+          aws ecs update-service \
+            --cluster dsy1107-backend-${ESTUDIANTE} \
+            --service backend --force-new-deployment

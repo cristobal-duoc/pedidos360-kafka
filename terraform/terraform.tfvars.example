@@ -1,0 +1,6 @@
+# Copia este archivo a terraform.tfvars y pon tus valores reales.
+# terraform.tfvars NO se versiona (lo excluye el .gitignore).
+
+estudiante = "martinez"
+db_user    = "postgres"
+db_pass    = "CloudNative2024" # cámbiala; cumple la política (8+, may/min/número)

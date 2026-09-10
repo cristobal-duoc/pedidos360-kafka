@@ -1,0 +1,26 @@
+# --- Terraform ---
+# OJO: .terraform.lock.hcl SÍ se versiona (fija las versiones de los providers).
+terraform/.terraform/
+terraform/terraform.tfstate
+terraform/terraform.tfstate.*
+terraform/*.tfvars
+terraform/user-token-ms.zip
+crash.log
+
+# --- credenciales del Learner Lab ---
+credenciales-lab.env
+
+# --- Node / front ---
+node_modules/
+dist/
+.env.local
+.env.*.local
+
+# --- Java / backend ---
+target/
+
+# --- editor / SO ---
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

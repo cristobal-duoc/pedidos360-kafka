@@ -1,0 +1,45 @@
+name: frontend_deploy
+
+on:
+  workflow_dispatch: {}
+  # push: { branches: [main], paths: ["frontend/**"] }
+
+env:
+  ESTUDIANTE: martinez            # cámbialo por el tuyo
+  AWS_REGION: us-east-1
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - uses: actions/setup-node@v4
+        with: { node-version: "22" }
+
+      - name: Compilar el front con la URL de producción y publicar en Amplify
+        run: |
+          APP_ID=$(aws amplify list-apps --query "apps[?name=='dsy1107-${ESTUDIANTE}'].appId" --output text)
+          API_URL=$(aws apigatewayv2 get-apis --query "Items[?Name=='pedidos360-${ESTUDIANTE}'].ApiEndpoint" --output text)
+          AMP_URL="https://main.$(aws amplify get-app --app-id "$APP_ID" --query app.defaultDomain --output text)"
+
+          cd frontend
+          npm ci
+          VITE_AWS_REGION=${AWS_REGION} \
+          VITE_COGNITO_DOMAIN="https://dsy1107-${ESTUDIANTE}.auth.${AWS_REGION}.amazoncognito.com" \
+          VITE_COGNITO_CLIENT_ID="$(aws cognito-idp list-user-pool-clients --user-pool-id "$(aws cognito-idp list-user-pools --max-results 60 --query "UserPools[?Name=='dsy1107-${ESTUDIANTE}'].Id" --output text)" --query 'UserPoolClients[0].ClientId' --output text)" \
+          VITE_REDIRECT_URI="${AMP_URL}/" \
+          VITE_API_URL="$API_URL" \
+            npm run build
+
+          cd dist && zip -r ../deploy.zip . && cd ..
+          URL=$(aws amplify create-deployment --app-id "$APP_ID" --branch-name main --query zipUploadUrl --output text)
+          curl -H "Content-Type: application/zip" --upload-file deploy.zip "$URL"
+          aws amplify start-deployment --app-id "$APP_ID" --branch-name main
