@@ -4,6 +4,22 @@
 > desde `terraform/`. **Pulsa Start Lab en AWS Academy y copia tus credenciales
 > antes de cada sesión** (se vencen).
 
+
+## Datos reales del despliegue (12-09-2026)
+
+| Qué | Valor |
+|---|---|
+| API Gateway | `https://mnljt0cdw0.execute-api.us-east-1.amazonaws.com` |
+| Cognito user pool | `us-east-1_jV63RQ8jF` |
+| Client ID (SPA) | `5rmbpaeusn73rpqcj6dt3m6l59` |
+| Dominio Cognito | `https://dsy1107-martinez.auth.us-east-1.amazoncognito.com` |
+| Amplify | `https://main.d3tixpf7a11ce.amplifyapp.com` |
+| Usuario demo | `alumno@duocuc.cl` (grupos: lectores + editores) |
+
+> La IP pública de la task de ECS **cambia en cada redespliegue**. No la anotes:
+> `scripts/publicar-ecs.sh` reapunta el API Gateway solo. Y como el lab se apaga,
+> hay que volver a correr `terraform apply` + el script en cada sesión.
+
 ## Fase A · Ya hecho
 
 - [x] Código en GitHub (`cristobal-duoc/pedidos360-ea1`, privado, rama `main`)
@@ -12,28 +28,28 @@
 
 ## Fase B · Rellenar los 3 placeholders (a mano)
 
-- [ ] **Tu apellido** en 3 sitios (reemplaza `martinez`):
-  - [ ] `.github/workflows/backend_deploy.yml` → `ESTUDIANTE: <apellido>`
-  - [ ] `.github/workflows/frontend_deploy.yml` → `ESTUDIANTE: <apellido>`
-  - [ ] `scripts/publicar-ecs.sh` → `ESTUDIANTE="<apellido>"`
-- [ ] `terraform/terraform.tfvars` (copia de `.example`, NO se versiona):
-  - [ ] `estudiante = "<apellido>"` y `db_pass = "<tu clave>"`
-- [ ] `backend/src/main/resources/application.properties` (después del `apply`, Fase C):
-  - [ ] `issuer-uri` → con tu `terraform output cognito_user_pool_id`
-  - [ ] `cognito.client-id` → con tu `terraform output cognito_client_id`
+- [x] **Tu apellido** en 3 sitios (reemplaza `martinez`):
+  - [x] `.github/workflows/backend_deploy.yml` → `ESTUDIANTE: <apellido>`
+  - [x] `.github/workflows/frontend_deploy.yml` → `ESTUDIANTE: <apellido>`
+  - [x] `scripts/publicar-ecs.sh` → `ESTUDIANTE="<apellido>"`
+- [x] `terraform/terraform.tfvars` (copia de `.example`, NO se versiona):
+  - [x] `estudiante = "<apellido>"` y `db_pass = "<tu clave>"`
+- [x] `backend/src/main/resources/application.properties` (después del `apply`, Fase C):
+  - [x] `issuer-uri` → con tu `terraform output cognito_user_pool_id`
+  - [x] `cognito.client-id` → con tu `terraform output cognito_client_id`
 
 ## Fase C · Crear la infraestructura en AWS
 
-- [ ] `terraform init`
-- [ ] `terraform plan`  → revisa que diga **0 to destroy**
-- [ ] `terraform apply`  (tarda 5–10 min; manda RDS, no lo interrumpas)
-- [ ] `terraform output -raw env_frontend > ../frontend/.env.local`
+- [x] `terraform init`
+- [x] `terraform plan`  → revisa que diga **0 to destroy**
+- [x] `terraform apply`  (tarda 5–10 min; manda RDS, no lo interrumpas)
+- [x] `terraform output -raw env_frontend > ../frontend/.env.local`
 
 ## Fase D · Publicar el backend y el front
 
-- [ ] Backend: `scripts/publicar-ecs.sh` (compila el .jar, sube la imagen a ECR,
+- [x] Backend: `scripts/publicar-ecs.sh` (compila el .jar, sube la imagen a ECR,
       redespliega en ECS y reapunta el API Gateway a la IP de la task)
-- [ ] Asignar tu usuario a un grupo (para probar el 403):
+- [x] Asignar tu usuario a un grupo (para probar el 403):
       `aws cognito-idp admin-add-user-to-group --user-pool-id <POOL> --username alumno@duocuc.cl --group-name lectores`
 - [ ] Front en Amplify: recompila con la URL de Amplify y sube el zip; añade esa
       URL a `callback_urls`, `logout_urls` (cognito.tf) y `allow_origins` (apigateway.tf)
@@ -50,11 +66,11 @@
 
 ## Fase F · Verificación end-to-end (los tres números)
 
-- [ ] `GET /productos` **sin** token → **401**
-- [ ] `GET /productos` con token de lector → **200**
-- [ ] `POST /productos` con token de lector → **403**
-- [ ] Mover el usuario a `editores`, re-loguear, `POST /productos` → **201/200**
-- [ ] El servicio ECS con la task en **RUNNING** y el health check verde
+- [x] `GET /productos` **sin** token → **401**
+- [x] `GET /productos` con token de lector → **200**
+- [x] `POST /productos` con token de lector → **403**
+- [x] Mover el usuario a `editores`, re-loguear, `POST /productos` → **201/200**
+- [x] El servicio ECS con la task en **RUNNING** y el health check verde
 
 ## Fase G · Entregar EP1 (formal)
 
