@@ -60,6 +60,8 @@ apunta a un path fijo, y `/solicitudes`, `/solicitudes/{id}` y
 Dos reglas que el backend impone y no se pueden saltar desde el cliente: el
 `solicitante` se toma del token (nadie pide vacaciones a nombre de otro) y el
 `estado` nace siempre `PENDIENTE`. Una solicitud ya resuelta responde **409**.
+Además, el rol no basta: un solicitante solo ve, edita y borra **sus** solicitudes
+(la de otro responde **403**); el aprobador ve todas para poder resolverlas.
 
 ## Estructura
 

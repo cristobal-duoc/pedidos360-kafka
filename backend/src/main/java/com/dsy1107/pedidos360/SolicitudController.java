@@ -4,6 +4,7 @@ import java.time.Instant;
 import java.util.List;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
@@ -14,6 +15,8 @@ import org.springframework.web.bind.annotation.*;
 // Los @PreAuthorize son una SEGUNDA compuerta, por si alguien llamara al
 // contenedor directo por su IP saltandose el gateway. Separan los dos papeles:
 // el solicitante crea y edita sus solicitudes; el aprobador solo resuelve.
+// Ademas, un solicitante solo ve y toca las SUYAS: el rol no basta, se compara
+// el dueño de la solicitud con quien viene en el token.
 @RestController
 @RequestMapping("/solicitudes")
 public class SolicitudController {
@@ -31,9 +34,15 @@ public class SolicitudController {
         return email != null ? email : jwt.getClaimAsString("username");
     }
 
+    private static boolean esAprobador(Authentication auth) {
+        return auth.getAuthorities().stream()
+            .anyMatch(a -> a.getAuthority().equals("ROLE_aprobadores"));
+    }
+
+    // El aprobador ve todas, para resolverlas; el solicitante, solo las suyas.
     @GetMapping
-    public List<Solicitud> listar() {
-        return repo.findAll();
+    public List<Solicitud> listar(Authentication auth, @AuthenticationPrincipal Jwt jwt) {
+        return esAprobador(auth) ? repo.findAll() : repo.findBySolicitante(quienEs(jwt));
     }
 
     // --- lo que hace el SOLICITANTE ---
@@ -49,8 +58,13 @@ public class SolicitudController {
 
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('solicitantes')")
-    public ResponseEntity<Solicitud> editar(@PathVariable Long id, @RequestBody Solicitud entrada) {
+    public ResponseEntity<Solicitud> editar(@PathVariable Long id, @RequestBody Solicitud entrada,
+                                            @AuthenticationPrincipal Jwt jwt) {
         return repo.findById(id).map(s -> {
+            // Nadie edita la solicitud de otro.
+            if (!s.getSolicitante().equals(quienEs(jwt))) {
+                return ResponseEntity.status(403).<Solicitud>build();
+            }
             // Una solicitud ya resuelta no se toca.
             if (s.getEstado() != Solicitud.Estado.PENDIENTE) {
                 return ResponseEntity.status(409).<Solicitud>build();
@@ -63,12 +77,18 @@ public class SolicitudController {
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('solicitantes')")
-    public ResponseEntity<Void> borrar(@PathVariable Long id) {
-        if (!repo.existsById(id)) {
-            return ResponseEntity.notFound().build();
-        }
-        repo.deleteById(id);
-        return ResponseEntity.noContent().build();
+    public ResponseEntity<Void> borrar(@PathVariable Long id, @AuthenticationPrincipal Jwt jwt) {
+        return repo.findById(id).map(s -> {
+            if (!s.getSolicitante().equals(quienEs(jwt))) {
+                return ResponseEntity.status(403).<Void>build();
+            }
+            // Borrar una resuelta haria desaparecer la decision del aprobador.
+            if (s.getEstado() != Solicitud.Estado.PENDIENTE) {
+                return ResponseEntity.status(409).<Void>build();
+            }
+            repo.delete(s);
+            return ResponseEntity.noContent().<Void>build();
+        }).orElse(ResponseEntity.notFound().build());
     }
 
     // --- lo que hace el APROBADOR ---

@@ -1,6 +1,7 @@
 package com.dsy1107.pedidos360;
 
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -23,7 +24,8 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
 // Verifica las reglas que definen la seguridad del backend:
 //   AUTENTICAR -> sin token valido, 401.
 //   AUTORIZAR  -> cada papel solo puede lo suyo: el solicitante crea pero no
-//                 resuelve; el aprobador resuelve pero no crea.
+//                 resuelve; el aprobador resuelve pero no crea. Y nadie toca
+//                 la solicitud de otro.
 //
 // No llama a Cognito: el JwtDecoder esta mockeado y el post-procesador jwt()
 // construye la autenticacion con las autoridades que en produccion produce el
@@ -125,6 +127,54 @@ class SeguridadTest {
             .andExpect(jsonPath("$.estado").value("RECHAZADA"))
             .andExpect(jsonPath("$.comentario").value("No hay cupo en esa fecha"))
             .andExpect(jsonPath("$.resueltaPor").value("jefatura@duocuc.cl"));
+    }
+
+    private long crearComo(String email) throws Exception {
+        String creada = mockMvc.perform(post("/solicitudes")
+                .with(como("solicitantes", email))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(UNA_SOLICITUD))
+            .andReturn().getResponse().getContentAsString();
+        return json.readTree(creada).get("id").asLong();
+    }
+
+    @Test
+    void solicitante_noPuedeEditarNiBorrarLaDeOtro_da403() throws Exception {
+        long ajena = crearComo("otra.persona@duocuc.cl");
+
+        mockMvc.perform(put("/solicitudes/" + ajena)
+                .with(como("solicitantes", "alumno@duocuc.cl"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(UNA_SOLICITUD))
+            .andExpect(status().isForbidden());
+        mockMvc.perform(delete("/solicitudes/" + ajena)
+                .with(como("solicitantes", "alumno@duocuc.cl")))
+            .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void solicitante_noPuedeBorrarUnaResuelta_da409() throws Exception {
+        long id = crearComo("alumno@duocuc.cl");
+        mockMvc.perform(put("/solicitudes/" + id + "/decision")
+                .with(como("aprobadores", "jefatura@duocuc.cl"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(UNA_DECISION))
+            .andExpect(status().isOk());
+
+        mockMvc.perform(delete("/solicitudes/" + id)
+                .with(como("solicitantes", "alumno@duocuc.cl")))
+            .andExpect(status().isConflict());
+    }
+
+    @Test
+    void solicitante_soloVeLasSuyas() throws Exception {
+        crearComo("otra.persona@duocuc.cl");
+        crearComo("alumno@duocuc.cl");
+
+        mockMvc.perform(get("/solicitudes").with(como("solicitantes", "alumno@duocuc.cl")))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$[*].solicitante",
+                org.hamcrest.Matchers.everyItem(org.hamcrest.Matchers.is("alumno@duocuc.cl"))));
     }
 
     // El health check de ECS tiene que responder sin token: si exigiera
