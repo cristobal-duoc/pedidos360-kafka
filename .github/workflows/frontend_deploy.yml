@@ -41,6 +41,13 @@ jobs:
 
           cd dist && zip -r ../deploy.zip . && cd ..
 
+          # Un run que muere entre create-deployment y start-deployment deja el
+          # job en PENDING, y Amplify rechaza crear otro mientras siga abierto.
+          for J in $(aws amplify list-jobs --app-id "$APP_ID" --branch-name main             --query 'jobSummaries[?status==`PENDING`||status==`RUNNING`].jobId'             --output text); do
+            echo "Cancelando el job $J, que quedo abierto"
+            aws amplify stop-job --app-id "$APP_ID" --branch-name main --job-id "$J" >/dev/null
+          done
+
           # create-deployment devuelve la URL de subida Y el jobId. start-deployment
           # exige el jobId: sin el falla con "Must specify jobId or sourceUrl".
           DEP=$(aws amplify create-deployment --app-id "$APP_ID" --branch-name main)
