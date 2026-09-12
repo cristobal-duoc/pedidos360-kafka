@@ -3,8 +3,11 @@ package com.dsy1107.pedidos360;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -15,15 +18,16 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
-// Verifica las dos reglas que definen la seguridad del backend:
+// Verifica las reglas que definen la seguridad del backend:
 //   AUTENTICAR -> sin token valido, 401.
-//   AUTORIZAR  -> con token pero sin el rol editores, 403 al escribir.
+//   AUTORIZAR  -> cada papel solo puede lo suyo: el solicitante crea pero no
+//                 resuelve; el aprobador resuelve pero no crea.
 //
 // No llama a Cognito: el JwtDecoder esta mockeado y el post-procesador jwt()
-// construye la autenticacion con las autoridades que se le indiquen, que es lo
-// que en produccion produce el convertidor de SecurityConfig a partir del claim
-// cognito:groups.
+// construye la autenticacion con las autoridades que en produccion produce el
+// convertidor de SecurityConfig a partir del claim cognito:groups.
 @SpringBootTest
 @AutoConfigureMockMvc
 @TestPropertySource(properties = {
@@ -36,54 +40,91 @@ import org.springframework.test.web.servlet.MockMvc;
 })
 class SeguridadTest {
 
-    private static final String UN_PRODUCTO = "{\"nombre\":\"Teclado\",\"precio\":25000}";
+    private static final String UNA_SOLICITUD = "{\"motivo\":\"Vacaciones de invierno\",\"dias\":5}";
+    private static final String UNA_DECISION = "{\"aprobar\":true,\"comentario\":\"Aprobado\"}";
 
     @Autowired
     MockMvc mockMvc;
 
+    @Autowired
+    ObjectMapper json;
+
     @MockBean
     JwtDecoder jwtDecoder;
 
-    private static SimpleGrantedAuthority rol(String nombre) {
-        return new SimpleGrantedAuthority("ROLE_" + nombre);
+    private static RequestPostProcessor como(String grupo, String email) {
+        return jwt()
+            .jwt(j -> j.claim("email", email))
+            .authorities(new SimpleGrantedAuthority("ROLE_" + grupo));
     }
 
     @Test
     void sinToken_leer_da401() throws Exception {
-        mockMvc.perform(get("/productos"))
+        mockMvc.perform(get("/solicitudes"))
             .andExpect(status().isUnauthorized());
     }
 
     @Test
-    void sinToken_escribir_da401() throws Exception {
-        mockMvc.perform(post("/productos")
+    void sinToken_crear_da401() throws Exception {
+        mockMvc.perform(post("/solicitudes")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(UN_PRODUCTO))
+                .content(UNA_SOLICITUD))
             .andExpect(status().isUnauthorized());
     }
 
     @Test
-    void lector_puedeLeer() throws Exception {
-        mockMvc.perform(get("/productos").with(jwt().authorities(rol("lectores"))))
+    void cualquierAutenticado_puedeLeer() throws Exception {
+        mockMvc.perform(get("/solicitudes").with(como("solicitantes", "alumno@duocuc.cl")))
             .andExpect(status().isOk());
     }
 
     @Test
-    void lector_noPuedeEscribir_da403() throws Exception {
-        mockMvc.perform(post("/productos")
-                .with(jwt().authorities(rol("lectores")))
+    void solicitante_creaYQuedaPendienteASuNombre() throws Exception {
+        mockMvc.perform(post("/solicitudes")
+                .with(como("solicitantes", "alumno@duocuc.cl"))
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(UN_PRODUCTO))
+                .content(UNA_SOLICITUD))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.estado").value("PENDIENTE"))
+            .andExpect(jsonPath("$.solicitante").value("alumno@duocuc.cl"));
+    }
+
+    @Test
+    void solicitante_noPuedeResolver_da403() throws Exception {
+        mockMvc.perform(put("/solicitudes/1/decision")
+                .with(como("solicitantes", "alumno@duocuc.cl"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(UNA_DECISION))
             .andExpect(status().isForbidden());
     }
 
     @Test
-    void editor_puedeEscribir() throws Exception {
-        mockMvc.perform(post("/productos")
-                .with(jwt().authorities(rol("editores")))
+    void aprobador_noPuedeCrear_da403() throws Exception {
+        mockMvc.perform(post("/solicitudes")
+                .with(como("aprobadores", "jefatura@duocuc.cl"))
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(UN_PRODUCTO))
-            .andExpect(status().isOk());
+                .content(UNA_SOLICITUD))
+            .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void aprobador_resuelveYRegistraComentario() throws Exception {
+        String creada = mockMvc.perform(post("/solicitudes")
+                .with(como("solicitantes", "alumno@duocuc.cl"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(UNA_SOLICITUD))
+            .andExpect(status().isOk())
+            .andReturn().getResponse().getContentAsString();
+        long id = json.readTree(creada).get("id").asLong();
+
+        mockMvc.perform(put("/solicitudes/" + id + "/decision")
+                .with(como("aprobadores", "jefatura@duocuc.cl"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"aprobar\":false,\"comentario\":\"No hay cupo en esa fecha\"}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.estado").value("RECHAZADA"))
+            .andExpect(jsonPath("$.comentario").value("No hay cupo en esa fecha"))
+            .andExpect(jsonPath("$.resueltaPor").value("jefatura@duocuc.cl"));
     }
 
     // El health check de ECS tiene que responder sin token: si exigiera

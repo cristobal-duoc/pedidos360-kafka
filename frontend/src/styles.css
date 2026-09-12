@@ -71,3 +71,18 @@ button.rojo:hover { background: #8f1e18; }
   padding: 0.6rem 0.9rem;
   border-radius: 7px;
 }
+
+/* ---- solicitudes ---- */
+.papel { color: #7a8493; font-size: 0.85rem; margin-left: 0.5rem; }
+.estado {
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.estado.pendiente { background: #fbf0dc; color: #8a5200; }
+.estado.aprobada  { background: #e3f2ea; color: #17703f; }
+.estado.rechazada { background: #f8e4e4; color: #a32222; }
+.comentario { width: 9rem; }
+.tabla small { color: #7a8493; }

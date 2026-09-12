@@ -4,7 +4,8 @@ import {
   getTokens, decodificarJwt, rolesDelUsuario, tieneRol,
 } from './auth.js'
 import {
-  listarProductos, crearProducto, actualizarProducto, borrarProducto,
+  listarSolicitudes, crearSolicitud, editarSolicitud, borrarSolicitud,
+  resolverSolicitud,
 } from './api.js'
 
 // Guard a nivel de módulo: en dev, React 18 (StrictMode) monta dos veces y el
@@ -18,15 +19,21 @@ function Guard({ tokens, rol, children }) {
   return children
 }
 
-const VACIO = { nombre: '', precio: '' }
+function Estado({ valor }) {
+  const clase = { PENDIENTE: 'pendiente', APROBADA: 'aprobada', RECHAZADA: 'rechazada' }[valor]
+  return <span className={`estado ${clase}`}>{valor}</span>
+}
+
+const VACIA = { motivo: '', dias: '' }
 
 export default function App() {
   const [tokens, setTokens] = useState(getTokens())
   const [error, setError] = useState(null)
   const [aviso, setAviso] = useState(null)
-  const [productos, setProductos] = useState(null)
-  const [nuevo, setNuevo] = useState(VACIO)
-  const [editando, setEditando] = useState(null) // { id, nombre, precio }
+  const [solicitudes, setSolicitudes] = useState(null)
+  const [nueva, setNueva] = useState(VACIA)
+  const [editando, setEditando] = useState(null)   // { id, motivo, dias }
+  const [comentarios, setComentarios] = useState({}) // { [id]: texto }
 
   const faltantes = configuracionIncompleta()
 
@@ -42,14 +49,12 @@ export default function App() {
     setAviso(null)
     try {
       await fn()
-      setProductos(await listarProductos())
+      setSolicitudes(await listarSolicitudes())
       if (mensajeOk) setAviso(mensajeOk)
     } catch (e) {
       setError(e.message)
     }
   }
-
-  const esEditor = tieneRol(tokens, 'editores')
 
   if (faltantes.length > 0) {
     return (
@@ -64,10 +69,12 @@ export default function App() {
 
   const idClaims = decodificarJwt(tokens?.id_token)
   const roles = rolesDelUsuario(tokens)
+  const esSolicitante = tieneRol(tokens, 'solicitantes')
+  const esAprobador = tieneRol(tokens, 'aprobadores')
 
   return (
     <main>
-      <h1>Pedidos360 · Identidad con Cognito</h1>
+      <h1>Pedidos360 · Solicitudes de vacaciones</h1>
       <p className="muted">{new URL(config.dominio).host}</p>
 
       {error && <p className="error">{error}</p>}
@@ -81,110 +88,157 @@ export default function App() {
         <>
           <section>
             <p><strong>Usuario:</strong> {idClaims?.email ?? '—'}</p>
-            <p><strong>Roles (cognito:groups):</strong> {roles.join(', ') || '(ninguno)'}</p>
+            <p>
+              <strong>Roles (cognito:groups):</strong> {roles.join(', ') || '(ninguno)'}
+              {esSolicitante && <span className="papel"> puede crear y editar</span>}
+              {esAprobador && <span className="papel"> puede aprobar y rechazar</span>}
+            </p>
           </section>
 
           <div className="botones">
             <button onClick={() => llamar(async () => {}, null)}>
-              GET /productos
+              GET /solicitudes
             </button>
             <button onClick={logout}>Cerrar sesión</button>
           </div>
 
-          {/* Crear. El guard esconde el formulario a quien no es editor; la
-              seguridad real la imponen el API Gateway y el backend con el 403. */}
           <section>
-            <h2>Crear producto</h2>
-            <Guard tokens={tokens} rol="editores">
+            <h2>Nueva solicitud</h2>
+            <Guard tokens={tokens} rol="solicitantes">
               <form
                 className="fila"
                 onSubmit={(e) => {
                   e.preventDefault()
                   llamar(
-                    () => crearProducto({ nombre: nuevo.nombre, precio: Number(nuevo.precio) }),
-                    `Creado «${nuevo.nombre}» · POST /productos`,
-                  ).then(() => setNuevo(VACIO))
+                    () => crearSolicitud({ motivo: nueva.motivo, dias: Number(nueva.dias) }),
+                    `Solicitud enviada · POST /solicitudes`,
+                  ).then(() => setNueva(VACIA))
                 }}
               >
                 <input
                   required
-                  placeholder="Nombre"
-                  value={nuevo.nombre}
-                  onChange={(e) => setNuevo({ ...nuevo, nombre: e.target.value })}
+                  placeholder="Motivo (ej: vacaciones de invierno)"
+                  value={nueva.motivo}
+                  onChange={(e) => setNueva({ ...nueva, motivo: e.target.value })}
                 />
                 <input
                   required
                   type="number"
-                  min="0"
-                  placeholder="Precio"
-                  value={nuevo.precio}
-                  onChange={(e) => setNuevo({ ...nuevo, precio: e.target.value })}
+                  min="1"
+                  placeholder="Días"
+                  value={nueva.dias}
+                  onChange={(e) => setNueva({ ...nueva, dias: e.target.value })}
                 />
-                <button type="submit">POST /productos</button>
+                <button type="submit">POST /solicitudes</button>
               </form>
             </Guard>
           </section>
 
           <section>
-            <h2>Productos</h2>
-            {productos === null ? (
-              <p className="muted">Pulsa «GET /productos» para cargarlos.</p>
-            ) : productos.length === 0 ? (
-              <p className="muted">No hay productos.</p>
+            <h2>Solicitudes</h2>
+            {solicitudes === null ? (
+              <p className="muted">Pulsa «GET /solicitudes» para cargarlas.</p>
+            ) : solicitudes.length === 0 ? (
+              <p className="muted">No hay solicitudes.</p>
             ) : (
               <table className="tabla">
                 <thead>
-                  <tr><th>ID</th><th>Nombre</th><th>Precio</th><th></th></tr>
+                  <tr>
+                    <th>ID</th><th>Solicitante</th><th>Motivo</th><th>Días</th>
+                    <th>Estado</th><th>Resolución</th><th></th>
+                  </tr>
                 </thead>
                 <tbody>
-                  {productos.map((p) =>
-                    editando?.id === p.id ? (
-                      <tr key={p.id}>
-                        <td>{p.id}</td>
+                  {solicitudes.map((s) =>
+                    editando?.id === s.id ? (
+                      <tr key={s.id}>
+                        <td>{s.id}</td>
+                        <td className="muted">{s.solicitante}</td>
                         <td>
                           <input
-                            value={editando.nombre}
-                            onChange={(e) => setEditando({ ...editando, nombre: e.target.value })}
+                            value={editando.motivo}
+                            onChange={(e) => setEditando({ ...editando, motivo: e.target.value })}
                           />
                         </td>
                         <td>
                           <input
                             type="number"
-                            min="0"
-                            value={editando.precio}
-                            onChange={(e) => setEditando({ ...editando, precio: e.target.value })}
+                            min="1"
+                            value={editando.dias}
+                            onChange={(e) => setEditando({ ...editando, dias: e.target.value })}
                           />
                         </td>
+                        <td><Estado valor={s.estado} /></td>
+                        <td></td>
                         <td className="acciones">
                           <button
                             onClick={() =>
                               llamar(
-                                () => actualizarProducto(p.id, {
-                                  nombre: editando.nombre,
-                                  precio: Number(editando.precio),
+                                () => editarSolicitud(s.id, {
+                                  motivo: editando.motivo,
+                                  dias: Number(editando.dias),
                                 }),
-                                `Actualizado el ${p.id} · PUT /productos/${p.id}`,
+                                `Editada la ${s.id} · PUT /solicitudes/${s.id}`,
                               ).then(() => setEditando(null))
                             }
                           >
                             Guardar
                           </button>
-                          <button className="gris" onClick={() => setEditando(null)}>
-                            Cancelar
-                          </button>
+                          <button className="gris" onClick={() => setEditando(null)}>Cancelar</button>
                         </td>
                       </tr>
                     ) : (
-                      <tr key={p.id}>
-                        <td>{p.id}</td>
-                        <td>{p.nombre}</td>
-                        <td>{p.precio}</td>
+                      <tr key={s.id}>
+                        <td>{s.id}</td>
+                        <td className="muted">{s.solicitante}</td>
+                        <td>{s.motivo}</td>
+                        <td>{s.dias}</td>
+                        <td><Estado valor={s.estado} /></td>
+                        <td className="muted">
+                          {s.estado === 'PENDIENTE'
+                            ? '—'
+                            : <>«{s.comentario}»<br /><small>{s.resueltaPor}</small></>}
+                        </td>
                         <td className="acciones">
-                          {esEditor ? (
+                          {s.estado !== 'PENDIENTE' ? (
+                            <span className="muted">resuelta</span>
+                          ) : esAprobador ? (
+                            <>
+                              <input
+                                className="comentario"
+                                placeholder="Comentario"
+                                value={comentarios[s.id] ?? ''}
+                                onChange={(e) =>
+                                  setComentarios({ ...comentarios, [s.id]: e.target.value })
+                                }
+                              />
+                              <button
+                                onClick={() =>
+                                  llamar(
+                                    () => resolverSolicitud(s.id, true, comentarios[s.id] ?? ''),
+                                    `Aprobada la ${s.id} · PUT /solicitudes/${s.id}/decision`,
+                                  )
+                                }
+                              >
+                                Aprobar
+                              </button>
+                              <button
+                                className="rojo"
+                                onClick={() =>
+                                  llamar(
+                                    () => resolverSolicitud(s.id, false, comentarios[s.id] ?? ''),
+                                    `Rechazada la ${s.id} · PUT /solicitudes/${s.id}/decision`,
+                                  )
+                                }
+                              >
+                                Rechazar
+                              </button>
+                            </>
+                          ) : esSolicitante ? (
                             <>
                               <button
                                 onClick={() =>
-                                  setEditando({ id: p.id, nombre: p.nombre, precio: String(p.precio) })
+                                  setEditando({ id: s.id, motivo: s.motivo, dias: String(s.dias) })
                                 }
                               >
                                 Editar
@@ -193,12 +247,12 @@ export default function App() {
                                 className="rojo"
                                 onClick={() =>
                                   llamar(
-                                    () => borrarProducto(p.id),
-                                    `Borrado el ${p.id} · DELETE /productos/${p.id}`,
+                                    () => borrarSolicitud(s.id),
+                                    `Eliminada la ${s.id} · DELETE /solicitudes/${s.id}`,
                                   )
                                 }
                               >
-                                Borrar
+                                Eliminar
                               </button>
                             </>
                           ) : (

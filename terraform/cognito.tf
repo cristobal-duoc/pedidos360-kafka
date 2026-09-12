@@ -68,36 +68,41 @@ resource "aws_cognito_user_pool_client" "spa" {
 }
 
 # El resource server DECLARA qué scopes existen (no los concede a nadie).
-resource "aws_cognito_resource_server" "productos" {
-  identifier   = "productos"
-  name         = "API de productos"
+resource "aws_cognito_resource_server" "solicitudes" {
+  identifier   = "solicitudes"
+  name         = "API de solicitudes"
   user_pool_id = aws_cognito_user_pool.pool.id
 
   scope {
     scope_name        = "read"
-    scope_description = "Consultar productos"
+    scope_description = "Consultar solicitudes"
   }
   scope {
     scope_name        = "write"
-    scope_description = "Crear y eliminar productos"
+    scope_description = "Crear, editar y eliminar solicitudes propias"
+  }
+  scope {
+    scope_name        = "approve"
+    scope_description = "Aprobar o rechazar solicitudes"
   }
 }
 
-# Los grupos: aquí NACE el permiso de cada persona.
-resource "aws_cognito_user_group" "lectores" {
-  name         = "lectores"
+# Los grupos: aquí NACE el permiso de cada persona. Son dos papeles distintos y
+# NINGUNO tiene todos los scopes: el solicitante no aprueba, el aprobador no crea.
+resource "aws_cognito_user_group" "solicitantes" {
+  name         = "solicitantes"
   user_pool_id = aws_cognito_user_pool.pool.id
-  description  = "Puede consultar productos (productos/read)"
+  description  = "Crea y edita sus solicitudes (solicitudes/read + write)"
 }
 
-resource "aws_cognito_user_group" "editores" {
-  name         = "editores"
+resource "aws_cognito_user_group" "aprobadores" {
+  name         = "aprobadores"
   user_pool_id = aws_cognito_user_pool.pool.id
-  description  = "Puede leer y modificar (productos/read + write)"
+  description  = "Aprueba o rechaza solicitudes (solicitudes/read + approve)"
 }
 
-# Un usuario de prueba, ya confirmado (password, no temporary_password).
-resource "aws_cognito_user" "demo" {
+# Dos usuarios de prueba, uno por papel, ya confirmados.
+resource "aws_cognito_user" "solicitante" {
   user_pool_id   = aws_cognito_user_pool.pool.id
   username       = "alumno@duocuc.cl"
   password       = var.db_pass # reutilizamos una clave que cumple la política
@@ -109,9 +114,26 @@ resource "aws_cognito_user" "demo" {
   }
 }
 
-# El demo empieza en "lectores": así puedes demostrar el 403 en la presentación.
-resource "aws_cognito_user_in_group" "demo_lector" {
+resource "aws_cognito_user" "aprobador" {
+  user_pool_id   = aws_cognito_user_pool.pool.id
+  username       = "jefatura@duocuc.cl"
+  password       = var.db_pass
+  message_action = "SUPPRESS"
+
+  attributes = {
+    email          = "jefatura@duocuc.cl"
+    email_verified = "true"
+  }
+}
+
+resource "aws_cognito_user_in_group" "el_solicitante" {
   user_pool_id = aws_cognito_user_pool.pool.id
-  group_name   = aws_cognito_user_group.lectores.name
-  username     = aws_cognito_user.demo.username
+  group_name   = aws_cognito_user_group.solicitantes.name
+  username     = aws_cognito_user.solicitante.username
+}
+
+resource "aws_cognito_user_in_group" "el_aprobador" {
+  user_pool_id = aws_cognito_user_pool.pool.id
+  group_name   = aws_cognito_user_group.aprobadores.name
+  username     = aws_cognito_user.aprobador.username
 }
