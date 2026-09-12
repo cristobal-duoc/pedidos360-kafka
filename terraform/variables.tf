@@ -21,7 +21,9 @@ variable "db_pass" {
 # La URL pública del backend en ECS. Terraform la deja en un placeholder y el
 # script scripts/publicar-ecs.sh la reapunta a la IP real de la task (por eso
 # la integración lleva ignore_changes = [integration_uri]).
+# 192.0.2.1 es del rango reservado para documentación (RFC 5737): no apunta a
+# nada real, pero API Gateway sí lo acepta como URI válida.
 variable "backend_url" {
   type    = string
-  default = "http://backend-todavia-no-desplegado:8080"
+  default = "http://192.0.2.1:8080"
 }

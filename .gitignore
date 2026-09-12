@@ -5,6 +5,8 @@ terraform/terraform.tfstate
 terraform/terraform.tfstate.*
 terraform/*.tfvars
 terraform/user-token-ms.zip
+# los planes binarios guardan los valores de las variables (incl. db_pass)
+terraform/tfplan*
 crash.log
 
 # --- credenciales del Learner Lab ---
