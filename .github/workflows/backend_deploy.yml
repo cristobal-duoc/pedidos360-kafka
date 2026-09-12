@@ -35,3 +35,30 @@ jobs:
           aws ecs update-service \
             --cluster dsy1107-backend-${ESTUDIANTE} \
             --service backend --force-new-deployment
+
+      # Sin balanceador, cada task nueva estrena IP publica. Si no se reapunta
+      # la integracion, el gateway sigue llamando a la IP muerta y responde 503
+      # con el pipeline igualmente en verde.
+      - name: Reapuntar el API Gateway a la IP de la task nueva
+        run: |
+          aws ecs wait services-stable             --cluster dsy1107-backend-${ESTUDIANTE} --services backend
+          TASK=$(aws ecs list-tasks --cluster dsy1107-backend-${ESTUDIANTE}             --service-name backend --query 'taskArns[0]' --output text)
+          ENI=$(aws ecs describe-tasks --cluster dsy1107-backend-${ESTUDIANTE}             --tasks "$TASK"             --query 'tasks[0].attachments[0].details[?name==`networkInterfaceId`].value'             --output text)
+          IP=$(aws ec2 describe-network-interfaces --network-interface-ids "$ENI"             --query 'NetworkInterfaces[0].Association.PublicIp' --output text)
+          API=$(aws apigatewayv2 get-apis             --query "Items[?Name=='pedidos360-${ESTUDIANTE}'].ApiId" --output text)
+          INT=$(aws apigatewayv2 get-integrations --api-id "$API"             --query 'Items[0].IntegrationId' --output text)
+          aws apigatewayv2 update-integration --api-id "$API"             --integration-id "$INT" --integration-uri "http://${IP}:8080/productos"
+          echo "Gateway reapuntado a http://${IP}:8080"
+
+      # Una pipeline verde no sirve si el sistema quedo caido: esto lo comprueba.
+      - name: Verificar que el gateway responde 401 sin token
+        run: |
+          API_URL=$(aws apigatewayv2 get-apis             --query "Items[?Name=='pedidos360-${ESTUDIANTE}'].ApiEndpoint" --output text)
+          for i in 1 2 3 4 5 6; do
+            CODE=$(curl -s -o /dev/null -w '%{http_code}' -m 20 "$API_URL/productos")
+            echo "intento $i -> $CODE"
+            if [ "$CODE" = "401" ]; then exit 0; fi
+            sleep 10
+          done
+          echo "El gateway no devolvio 401: el backend no quedo alcanzable."
+          exit 1
