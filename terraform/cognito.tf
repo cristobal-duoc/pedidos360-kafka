@@ -50,8 +50,10 @@ resource "aws_cognito_user_pool_client" "spa" {
   # OJO: productos/read y productos/write NO van aquí. Solo el Lambda los concede.
   allowed_oauth_scopes = ["openid", "email", "profile"]
 
-  callback_urls = ["http://localhost:5173/"]
-  logout_urls   = ["http://localhost:5173/"]
+  # localhost para desarrollo y Amplify para el despliegue real. Cognito solo
+  # redirige a URLs declaradas aqui: si falta, el login muerte con redirect_mismatch.
+  callback_urls = ["http://localhost:5173/", "${local.url_amplify}/"]
+  logout_urls   = ["http://localhost:5173/", "${local.url_amplify}/"]
 
   explicit_auth_flows = ["ALLOW_USER_PASSWORD_AUTH", "ALLOW_REFRESH_TOKEN_AUTH"]
 
