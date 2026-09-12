@@ -3,7 +3,9 @@ import {
   config, configuracionIncompleta, login, logout, procesarRetorno,
   getTokens, decodificarJwt, rolesDelUsuario, tieneRol,
 } from './auth.js'
-import { listarProductos, crearProducto } from './api.js'
+import {
+  listarProductos, crearProducto, actualizarProducto, borrarProducto,
+} from './api.js'
 
 // Guard a nivel de módulo: en dev, React 18 (StrictMode) monta dos veces y el
 // efecto correría dos veces; el code es de un solo uso y el 2º canje daría error.
@@ -16,10 +18,15 @@ function Guard({ tokens, rol, children }) {
   return children
 }
 
+const VACIO = { nombre: '', precio: '' }
+
 export default function App() {
   const [tokens, setTokens] = useState(getTokens())
   const [error, setError] = useState(null)
-  const [resultado, setResultado] = useState(null)
+  const [aviso, setAviso] = useState(null)
+  const [productos, setProductos] = useState(null)
+  const [nuevo, setNuevo] = useState(VACIO)
+  const [editando, setEditando] = useState(null) // { id, nombre, precio }
 
   const faltantes = configuracionIncompleta()
 
@@ -29,15 +36,20 @@ export default function App() {
     procesarRetorno().then((t) => t && setTokens(t)).catch((e) => setError(e.message))
   }, [])
 
-  async function llamar(fn) {
+  // Envuelve cada llamada: limpia mensajes, ejecuta y recarga la lista.
+  async function llamar(fn, mensajeOk) {
     setError(null)
+    setAviso(null)
     try {
-      setResultado(await fn())
+      await fn()
+      setProductos(await listarProductos())
+      if (mensajeOk) setAviso(mensajeOk)
     } catch (e) {
-      setResultado(null)
       setError(e.message)
     }
   }
+
+  const esEditor = tieneRol(tokens, 'editores')
 
   if (faltantes.length > 0) {
     return (
@@ -59,6 +71,7 @@ export default function App() {
       <p className="muted">{new URL(config.dominio).host}</p>
 
       {error && <p className="error">{error}</p>}
+      {aviso && <p className="aviso">{aviso}</p>}
 
       {!tokens ? (
         <button onClick={() => login().catch((e) => setError(e.message))}>
@@ -72,20 +85,133 @@ export default function App() {
           </section>
 
           <div className="botones">
-            <button onClick={() => llamar(listarProductos)}>GET /productos</button>
-            {/* El guard oculta el botón de crear si no eres editor (UX). La
-                seguridad real la impone el API Gateway con el 403. */}
-            <Guard tokens={tokens} rol="editores">
-              <button onClick={() => llamar(() => crearProducto({ nombre: 'Café', precio: 2500 }))}>
-                POST /productos (crear)
-              </button>
-            </Guard>
+            <button onClick={() => llamar(async () => {}, null)}>
+              GET /productos
+            </button>
             <button onClick={logout}>Cerrar sesión</button>
           </div>
 
-          {resultado && (
-            <pre className="ok">{JSON.stringify(resultado, null, 2)}</pre>
-          )}
+          {/* Crear. El guard esconde el formulario a quien no es editor; la
+              seguridad real la imponen el API Gateway y el backend con el 403. */}
+          <section>
+            <h2>Crear producto</h2>
+            <Guard tokens={tokens} rol="editores">
+              <form
+                className="fila"
+                onSubmit={(e) => {
+                  e.preventDefault()
+                  llamar(
+                    () => crearProducto({ nombre: nuevo.nombre, precio: Number(nuevo.precio) }),
+                    `Creado «${nuevo.nombre}» · POST /productos`,
+                  ).then(() => setNuevo(VACIO))
+                }}
+              >
+                <input
+                  required
+                  placeholder="Nombre"
+                  value={nuevo.nombre}
+                  onChange={(e) => setNuevo({ ...nuevo, nombre: e.target.value })}
+                />
+                <input
+                  required
+                  type="number"
+                  min="0"
+                  placeholder="Precio"
+                  value={nuevo.precio}
+                  onChange={(e) => setNuevo({ ...nuevo, precio: e.target.value })}
+                />
+                <button type="submit">POST /productos</button>
+              </form>
+            </Guard>
+          </section>
+
+          <section>
+            <h2>Productos</h2>
+            {productos === null ? (
+              <p className="muted">Pulsa «GET /productos» para cargarlos.</p>
+            ) : productos.length === 0 ? (
+              <p className="muted">No hay productos.</p>
+            ) : (
+              <table className="tabla">
+                <thead>
+                  <tr><th>ID</th><th>Nombre</th><th>Precio</th><th></th></tr>
+                </thead>
+                <tbody>
+                  {productos.map((p) =>
+                    editando?.id === p.id ? (
+                      <tr key={p.id}>
+                        <td>{p.id}</td>
+                        <td>
+                          <input
+                            value={editando.nombre}
+                            onChange={(e) => setEditando({ ...editando, nombre: e.target.value })}
+                          />
+                        </td>
+                        <td>
+                          <input
+                            type="number"
+                            min="0"
+                            value={editando.precio}
+                            onChange={(e) => setEditando({ ...editando, precio: e.target.value })}
+                          />
+                        </td>
+                        <td className="acciones">
+                          <button
+                            onClick={() =>
+                              llamar(
+                                () => actualizarProducto(p.id, {
+                                  nombre: editando.nombre,
+                                  precio: Number(editando.precio),
+                                }),
+                                `Actualizado el ${p.id} · PUT /productos/${p.id}`,
+                              ).then(() => setEditando(null))
+                            }
+                          >
+                            Guardar
+                          </button>
+                          <button className="gris" onClick={() => setEditando(null)}>
+                            Cancelar
+                          </button>
+                        </td>
+                      </tr>
+                    ) : (
+                      <tr key={p.id}>
+                        <td>{p.id}</td>
+                        <td>{p.nombre}</td>
+                        <td>{p.precio}</td>
+                        <td className="acciones">
+                          {esEditor ? (
+                            <>
+                              <button
+                                onClick={() =>
+                                  setEditando({ id: p.id, nombre: p.nombre, precio: String(p.precio) })
+                                }
+                              >
+                                Editar
+                              </button>
+                              <button
+                                className="rojo"
+                                onClick={() =>
+                                  llamar(
+                                    () => borrarProducto(p.id),
+                                    `Borrado el ${p.id} · DELETE /productos/${p.id}`,
+                                  )
+                                }
+                              >
+                                Borrar
+                              </button>
+                            </>
+                          ) : (
+                            <span className="muted">solo lectura</span>
+                          )}
+                        </td>
+                      </tr>
+                    ),
+                  )}
+                </tbody>
+              </table>
+            )}
+          </section>
 
           <details>
             <summary>Ver los claims del token</summary>

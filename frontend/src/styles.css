@@ -37,3 +37,37 @@ pre.ok { border-left: 4px solid #1a7f45; }
   padding: 0.6rem 0.9rem;
   border-radius: 7px;
 }
+
+/* ---- CRUD ---- */
+h2 { font-size: 1.05rem; margin: 0 0 0.6rem; }
+input {
+  font: inherit;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid rgba(127, 127, 127, 0.45);
+  border-radius: 7px;
+  background: transparent;
+  color: inherit;
+  min-width: 0;
+}
+.fila { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+.fila input { flex: 1 1 8rem; }
+.tabla { width: 100%; border-collapse: collapse; }
+.tabla th, .tabla td {
+  text-align: left;
+  padding: 0.5rem 0.6rem;
+  border-bottom: 1px solid rgba(127, 127, 127, 0.25);
+  vertical-align: middle;
+}
+.tabla th { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: #7a8493; }
+.acciones { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+.acciones button { padding: 0.35rem 0.7rem; font-size: 0.88rem; }
+button.gris { background: #6b7280; }
+button.gris:hover { background: #565d68; }
+button.rojo { background: #b3261e; }
+button.rojo:hover { background: #8f1e18; }
+.aviso {
+  background: #e6f4ec;
+  color: #14623a;
+  padding: 0.6rem 0.9rem;
+  border-radius: 7px;
+}
