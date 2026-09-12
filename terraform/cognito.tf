@@ -53,7 +53,7 @@ resource "aws_cognito_user_pool_client" "spa" {
   allowed_oauth_scopes = ["openid", "email", "profile"]
 
   # localhost para desarrollo y Amplify para el despliegue real. Cognito solo
-  # redirige a URLs declaradas aqui: si falta, el login muerte con redirect_mismatch.
+  # redirige a URLs declaradas aqui: si falta, el login muere con redirect_mismatch.
   callback_urls = ["http://localhost:5173/", "${local.url_amplify}/"]
   logout_urls   = ["http://localhost:5173/", "${local.url_amplify}/"]
 
