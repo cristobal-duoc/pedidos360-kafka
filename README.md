@@ -4,7 +4,8 @@ Sistema full-stack seguro en AWS para **solicitudes de vacaciones**, con dos
 papeles: el **solicitante** pide y gestiona sus solicitudes, y el **aprobador**
 las resuelve dejando un comentario.
 
-Un front React inicia sesión con **Cognito** (OIDC, Authorization Code + PKCE),
+Un front React inicia sesión con **Cognito** (OIDC, Authorization Code + PKCE,
+con `state` y `nonce`) y renueva el acceso solo con el `refresh_token`,
 un **API Gateway** valida el JWT y autoriza por scope, un backend **Spring Boot**
 en **ECS Fargate** vuelve a validar el token y ejecuta la lógica, y los datos
 viven en **PostgreSQL** sobre RDS. Todo levantado con **Terraform**.
@@ -14,6 +15,7 @@ viven en **PostgreSQL** sobre RDS. Todo levantado con **Terraform**.
 ```
 Usuario → Front (React/Amplify) → Cognito ─(login PKCE)→ tokens
    grupo del usuario → Lambda user-token-ms → claim scope → access token
+   quien se registra solo → Lambda user-signup-ms → grupo solicitantes
 Front → API Gateway ─(valida JWT + authorization_scopes)→ Spring Boot (ECS) → RDS
    401 = sin token o inválido      403 = token válido sin el scope de la ruta
 ```
@@ -36,6 +38,10 @@ Front → API Gateway ─(valida JWT + authorization_scopes)→ Spring Boot (ECS
 **Ningún grupo tiene `write` y `approve` a la vez**: ahí está la separación de
 papeles. Los scopes no se piden desde el front — los concede la Lambda
 `user-token-ms` según el grupo, justo antes de que Cognito firme el token.
+
+Quien crea su cuenta con **Sign up** entra a `solicitantes` al confirmarla (Lambda
+`user-signup-ms`, trigger Post Confirmation): el papel de menor privilegio. El de
+aprobador lo asigna a mano un administrador.
 
 ## Las rutas
 
@@ -94,7 +100,8 @@ la imagen, que ya está en ECR.
 
 Ambos con la contraseña definida en `db_pass`. Entra con uno y con otro para ver
 cómo cambia la interfaz: al aprobador ni siquiera se le muestra el formulario de
-creación, y al solicitante no se le muestran los botones de resolución. Esa es
+creación, y al solicitante no se le muestran los botones de resolución (el front
+lo decide con el claim `scope`, el mismo que exige cada ruta). Esa es
 solo la capa de comodidad; el **403** lo imponen el gateway y el backend.
 
 ## Qué nunca se versiona
