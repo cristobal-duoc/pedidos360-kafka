@@ -16,9 +16,11 @@ resource "aws_cognito_user_pool" "pool" {
     require_symbols   = false
   }
 
-  # Solo un administrador crea usuarios (no hay auto-registro).
+  # Auto-registro habilitado: el Hosted UI muestra "Sign up" y el usuario crea
+  # su cuenta solo, verificandola por codigo al correo (auto_verified_attributes).
+  # La rubrica pide exactamente eso; con true el enlace no aparece.
   admin_create_user_config {
-    allow_admin_create_user_only = true
+    allow_admin_create_user_only = false
   }
 
   # El trigger que traduce grupos -> scopes, antes de firmar el token.
