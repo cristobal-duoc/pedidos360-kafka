@@ -35,8 +35,13 @@ IP=$(aws ec2 describe-network-interfaces --network-interface-ids "${ENI}" \
 
 echo "==> Reapuntando el API Gateway a http://${IP}:8080"
 API=$(aws apigatewayv2 get-apis --query "Items[?Name=='pedidos360-${ESTUDIANTE}'].ApiId" --output text)
-INT=$(aws apigatewayv2 get-integrations --api-id "${API}" --query 'Items[0].IntegrationId' --output text)
-aws apigatewayv2 update-integration --api-id "${API}" --integration-id "${INT}" \
-  --integration-uri "http://${IP}:8080/productos" >/dev/null
+# Hay DOS integraciones (/productos y /productos/{id}): se reapunta cada una
+# conservando su propio path, porque solo cambia el host.
+for INT in $(aws apigatewayv2 get-integrations --api-id "${API}" --query 'Items[].IntegrationId' --output text); do
+  URI=$(aws apigatewayv2 get-integration --api-id "${API}" --integration-id "${INT}" --query IntegrationUri --output text)
+  RUTA="/${URI#*://*/}"
+  aws apigatewayv2 update-integration --api-id "${API}" --integration-id "${INT}" --integration-uri "http://${IP}:8080${RUTA}" >/dev/null
+  echo "    ${INT} -> http://${IP}:8080${RUTA}"
+done
 
 echo "==> Listo. Backend en http://${IP}:8080 ; API en $(terraform -chdir=terraform output -raw api_url)"
