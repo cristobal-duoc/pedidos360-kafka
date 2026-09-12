@@ -46,7 +46,7 @@ jobs:
           ENI=$(aws ecs describe-tasks --cluster dsy1107-backend-${ESTUDIANTE}             --tasks "$TASK"             --query 'tasks[0].attachments[0].details[?name==`networkInterfaceId`].value'             --output text)
           IP=$(aws ec2 describe-network-interfaces --network-interface-ids "$ENI"             --query 'NetworkInterfaces[0].Association.PublicIp' --output text)
           API=$(aws apigatewayv2 get-apis             --query "Items[?Name=='pedidos360-${ESTUDIANTE}'].ApiId" --output text)
-          # Hay DOS integraciones (/productos y /productos/{id}): se reapunta cada
+          # Hay TRES integraciones (/solicitudes, /{id} y /{id}/decision): se reapunta
           # una conservando su propio path, porque solo cambia el host.
           for INT in $(aws apigatewayv2 get-integrations --api-id "$API" --query 'Items[].IntegrationId' --output text); do
             URI=$(aws apigatewayv2 get-integration --api-id "$API" --integration-id "$INT" --query IntegrationUri --output text)
@@ -61,7 +61,7 @@ jobs:
         run: |
           API_URL=$(aws apigatewayv2 get-apis             --query "Items[?Name=='pedidos360-${ESTUDIANTE}'].ApiEndpoint" --output text)
           for i in 1 2 3 4 5 6; do
-            CODE=$(curl -s -o /dev/null -w '%{http_code}' -m 20 "$API_URL/productos")
+            CODE=$(curl -s -o /dev/null -w '%{http_code}' -m 20 "$API_URL/solicitudes")
             echo "intento $i -> $CODE"
             if [ "$CODE" = "401" ]; then exit 0; fi
             sleep 10

@@ -45,7 +45,7 @@ echo "    IP de la task: ${IP}"
 echo "==> 4/5 Reapuntando el API Gateway"
 API=$(aws apigatewayv2 get-apis \
   --query "Items[?Name=='pedidos360-${ESTUDIANTE}'].ApiId" --output text)
-# Hay DOS integraciones (/productos y /productos/{id}): se reapunta cada una
+# Hay TRES integraciones (/solicitudes, /{id} y /{id}/decision): se reapunta cada una
 # conservando su propio path, porque solo cambia el host.
 for INT in $(aws apigatewayv2 get-integrations --api-id "${API}" --query 'Items[].IntegrationId' --output text); do
   URI=$(aws apigatewayv2 get-integration --api-id "${API}" --integration-id "${INT}" --query IntegrationUri --output text)
@@ -57,7 +57,7 @@ done
 echo "==> 5/5 Verificando de punta a punta"
 API_URL=$(terraform -chdir=terraform output -raw api_url)
 for i in $(seq 1 12); do
-  CODE=$(curl -s -o /dev/null -w '%{http_code}' -m 20 "${API_URL}/productos" || echo 000)
+  CODE=$(curl -s -o /dev/null -w '%{http_code}' -m 20 "${API_URL}/solicitudes" || echo 000)
   echo "    intento ${i}: GET sin token -> ${CODE}"
   [ "${CODE}" = "401" ] && break
   sleep 10

@@ -5,7 +5,7 @@ const cfg = {
   dominio: import.meta.env.VITE_COGNITO_DOMAIN,
   clientId: import.meta.env.VITE_COGNITO_CLIENT_ID,
   redirectUri: import.meta.env.VITE_REDIRECT_URI,
-  // openid es obligatorio en OIDC. Los scopes de negocio (productos/*) NO se piden
+  // openid es obligatorio en OIDC. Los scopes de negocio (solicitudes/*) NO se piden
   // aquí: los concede el Lambda según el grupo del usuario.
   scopes: 'openid email profile',
 }

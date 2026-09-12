@@ -35,7 +35,7 @@ IP=$(aws ec2 describe-network-interfaces --network-interface-ids "${ENI}" \
 
 echo "==> Reapuntando el API Gateway a http://${IP}:8080"
 API=$(aws apigatewayv2 get-apis --query "Items[?Name=='pedidos360-${ESTUDIANTE}'].ApiId" --output text)
-# Hay DOS integraciones (/productos y /productos/{id}): se reapunta cada una
+# Hay TRES integraciones (/solicitudes, /{id} y /{id}/decision): se reapunta cada una
 # conservando su propio path, porque solo cambia el host.
 for INT in $(aws apigatewayv2 get-integrations --api-id "${API}" --query 'Items[].IntegrationId' --output text); do
   URI=$(aws apigatewayv2 get-integration --api-id "${API}" --integration-id "${INT}" --query IntegrationUri --output text)

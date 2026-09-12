@@ -49,7 +49,7 @@ resource "aws_cognito_user_pool_client" "spa" {
   allowed_oauth_flows                  = ["code"]
   supported_identity_providers         = ["COGNITO"]
 
-  # OJO: productos/read y productos/write NO van aquí. Solo el Lambda los concede.
+  # OJO: los scopes solicitudes/* NO van aquí. Solo el Lambda los concede, segun el grupo.
   allowed_oauth_scopes = ["openid", "email", "profile"]
 
   # localhost para desarrollo y Amplify para el despliegue real. Cognito solo

@@ -24,7 +24,7 @@ import org.springframework.security.web.SecurityFilterChain;
 
 // El backend es un RESOURCE SERVER: AUTENTICA cada peticion validando el JWT de
 // Cognito (firma via JWKS, issuer, audience, vigencia) y ademas AUTORIZA por rol
-// en los metodos de escritura (ver ProductoController).
+// segun el papel del usuario (ver SolicitudController).
 //
 // La autorizacion primaria sigue siendo la del API Gateway, que corta la peticion
 // antes de que llegue aqui. Esta es una SEGUNDA compuerta, independiente: si
