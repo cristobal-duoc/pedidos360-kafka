@@ -1,10 +1,10 @@
 // Pasos 10-11: la app llama a la API con el access token; la API responde.
-import { getAccessToken } from './auth.js'
+import { getAccessToken, getTokens, renovarTokens, segundosRestantes } from './auth.js'
 
 const API = import.meta.env.VITE_API_URL
 
-async function pedir(metodo, ruta, cuerpo) {
-  const r = await fetch(`${API}${ruta}`, {
+function llamar(metodo, ruta, cuerpo) {
+  return fetch(`${API}${ruta}`, {
     method: metodo,
     headers: {
       Authorization: `Bearer ${getAccessToken()}`,
@@ -12,6 +12,19 @@ async function pedir(metodo, ruta, cuerpo) {
     },
     body: cuerpo ? JSON.stringify(cuerpo) : undefined,
   })
+}
+
+async function pedir(metodo, ruta, cuerpo) {
+  // Si al token le queda menos de un minuto, se renueva ANTES de llamar.
+  if (segundosRestantes(getTokens()) < 60) await renovarTokens()
+
+  let r = await llamar(metodo, ruta, cuerpo)
+  // Un 401 puede ser un token que venció justo en camino: se renueva una vez y se
+  // reintenta. Si vuelve a fallar, el problema no es la vigencia.
+  if (r.status === 401 && (await renovarTokens())) {
+    r = await llamar(metodo, ruta, cuerpo)
+  }
+
   if (r.status === 401) throw new Error('401: token inválido, ausente o expirado')
   if (r.status === 403) throw new Error('403: no tienes el scope para esta operación')
   if (r.status === 409) throw new Error('409: la solicitud ya estaba resuelta')

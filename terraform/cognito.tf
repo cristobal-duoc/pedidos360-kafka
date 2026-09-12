@@ -23,12 +23,14 @@ resource "aws_cognito_user_pool" "pool" {
     allow_admin_create_user_only = false
   }
 
-  # El trigger que traduce grupos -> scopes, antes de firmar el token.
+  # Dos triggers: uno traduce grupos -> scopes antes de firmar el token; el otro
+  # mete en "solicitantes" a quien se registra solo, para que no quede sin permisos.
   lambda_config {
     pre_token_generation_config {
       lambda_arn     = aws_lambda_function.user_token_ms.arn
       lambda_version = "V2_0"
     }
+    post_confirmation = aws_lambda_function.user_signup_ms.arn
   }
 }
 

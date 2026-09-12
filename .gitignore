@@ -5,6 +5,7 @@ terraform/terraform.tfstate
 terraform/terraform.tfstate.*
 terraform/*.tfvars
 terraform/user-token-ms.zip
+terraform/user-signup-ms.zip
 # los planes binarios guardan los valores de las variables (incl. db_pass)
 terraform/tfplan*
 crash.log

@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import {
   config, configuracionIncompleta, login, logout, procesarRetorno,
-  getTokens, decodificarJwt, rolesDelUsuario, tieneRol,
+  getTokens, decodificarJwt, rolesDelUsuario, scopesDelUsuario, tieneScope,
+  renovarTokens, segundosRestantes,
 } from './auth.js'
 import {
   listarSolicitudes, crearSolicitud, editarSolicitud, borrarSolicitud,
@@ -12,10 +13,12 @@ import {
 // efecto correría dos veces; el code es de un solo uso y el 2º canje daría error.
 let callbackProcesado = false
 
-// Un guard de UI: muestra el contenido solo si el usuario tiene el rol.
-function Guard({ tokens, rol, children }) {
+// Un guard de UI: muestra el contenido solo si el token trae el scope. Usa el mismo
+// scope que exige la ruta en el API Gateway, así la interfaz ofrece justo lo que la
+// API va a aceptar. Es comodidad, no seguridad: el 403 lo imponen gateway y backend.
+function Guard({ tokens, scope, children }) {
   if (!tokens) return <p>Debes iniciar sesión.</p>
-  if (rol && !tieneRol(tokens, rol)) return <p className="muted">Requiere rol: {rol}</p>
+  if (scope && !tieneScope(tokens, scope)) return <p className="muted">Requiere el scope {scope}</p>
   return children
 }
 
@@ -53,7 +56,18 @@ export default function App() {
       if (mensajeOk) setAviso(mensajeOk)
     } catch (e) {
       setError(e.message)
+    } finally {
+      // api.js pudo haber renovado el token por el camino: se refleja en pantalla.
+      setTokens(getTokens())
     }
+  }
+
+  async function renovarAhora() {
+    setError(null)
+    const nuevos = await renovarTokens()
+    setTokens(nuevos)
+    if (nuevos) setAviso('Token renovado con el refresh_token, sin volver a iniciar sesión.')
+    else setError('El refresh_token ya no es válido: inicia sesión de nuevo.')
   }
 
   if (faltantes.length > 0) {
@@ -69,8 +83,11 @@ export default function App() {
 
   const idClaims = decodificarJwt(tokens?.id_token)
   const roles = rolesDelUsuario(tokens)
-  const esSolicitante = tieneRol(tokens, 'solicitantes')
-  const esAprobador = tieneRol(tokens, 'aprobadores')
+  const scopes = scopesDelUsuario(tokens)
+  // Qué ofrecer se decide con los scopes: son los que exige cada ruta del gateway.
+  const esSolicitante = tieneScope(tokens, 'solicitudes/write')
+  const esAprobador = tieneScope(tokens, 'solicitudes/approve')
+  const minutos = Math.max(0, Math.floor(segundosRestantes(tokens) / 60))
 
   return (
     <main>
@@ -88,23 +105,26 @@ export default function App() {
         <>
           <section>
             <p><strong>Usuario:</strong> {idClaims?.email ?? '—'}</p>
+            <p><strong>Roles (cognito:groups):</strong> {roles.join(', ') || '(ninguno)'}</p>
             <p>
-              <strong>Roles (cognito:groups):</strong> {roles.join(', ') || '(ninguno)'}
+              <strong>Scopes (scope):</strong> {scopes.join(', ') || '(ninguno)'}
               {esSolicitante && <span className="papel"> puede crear y editar</span>}
               {esAprobador && <span className="papel"> puede aprobar y rechazar</span>}
             </p>
+            <p className="muted">El acceso vence en {minutos} min y se renueva solo.</p>
           </section>
 
           <div className="botones">
             <button onClick={() => llamar(async () => {}, null)}>
               GET /solicitudes
             </button>
+            <button className="gris" onClick={renovarAhora}>Renovar token</button>
             <button onClick={logout}>Cerrar sesión</button>
           </div>
 
           <section>
             <h2>Nueva solicitud</h2>
-            <Guard tokens={tokens} rol="solicitantes">
+            <Guard tokens={tokens} scope="solicitudes/write">
               <form
                 className="fila"
                 onSubmit={(e) => {
