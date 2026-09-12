@@ -45,8 +45,11 @@ resource "aws_cloudwatch_log_group" "backend" {
   retention_in_days = 7
 }
 
-# Sin balanceador: el API Gateway llama por internet. El 8080 queda abierto;
-# la UNICA puerta real es el API Gateway (autoriza por scope).
+# Sin balanceador: el API Gateway llama por internet, asi que el 8080 queda
+# abierto. No es la vulnerabilidad que parece: el backend valida el JWT por su
+# cuenta (401) y exige el rol para escribir (403), asi que llegar a la IP no
+# sirve de nada sin un token valido. Con un balanceador el puerto no estaria
+# expuesto, pero el Learner Lab no permite crearlo.
 resource "aws_security_group" "tarea" {
   name        = "pedidos360-tarea-${var.estudiante}"
   description = "8080 abierto para el API Gateway"

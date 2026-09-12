@@ -4,8 +4,8 @@ resource "aws_amplify_app" "front" {
   platform = "WEB"
 
   # Una SPA sirve index.html para CUALQUIER ruta; sin esto, todo lo que no sea
-  # "/" da 404. El "json" en la lista va A PROPOSITO: si no, la regla se
-  # tragaria /config.json y el front arrancaria sin configuracion.
+  # "/" da 404. La lista excluye las extensiones de los estaticos para que la
+  # regla no se trague el .js ni el .css del propio build.
   custom_rule {
     source = "</^[^.]+$|\\.(?!(css|gif|ico|jpg|js|png|txt|svg|woff|woff2|ttf|map|json|webp)$)([^.]+$)/>"
     target = "/index.html"
