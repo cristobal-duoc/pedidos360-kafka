@@ -37,7 +37,7 @@ public class NotificacionListener {
         this.servicio = servicio;
     }
 
-    @RabbitListener(id = "notificaciones-aprobador",
+    @RabbitListener(
             queues = "${mensajeria.colas.notificaciones.nombre}")
     public void recibir(Message mensaje, Channel canal) throws IOException {
         long tag = mensaje.getMessageProperties().getDeliveryTag();

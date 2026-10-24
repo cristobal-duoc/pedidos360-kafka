@@ -36,7 +36,7 @@ public class ComprobanteListener {
         this.servicio = servicio;
     }
 
-    @RabbitListener(id = "documentos-comprobante",
+    @RabbitListener(
             queues = "${mensajeria.colas.comprobantes.nombre}")
     public void recibir(Message mensaje, Channel canal) throws IOException {
         long tag = mensaje.getMessageProperties().getDeliveryTag();

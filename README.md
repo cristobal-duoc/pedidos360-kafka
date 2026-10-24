@@ -8,7 +8,11 @@ Un front React inicia sesión con **Cognito** (OIDC, Authorization Code + PKCE,
 con `state` y `nonce`) y renueva el acceso solo con el `refresh_token`,
 un **API Gateway** valida el JWT y autoriza por scope, un backend **Spring Boot**
 en **ECS Fargate** vuelve a validar el token y ejecuta la lógica, y los datos
-viven en **PostgreSQL** sobre RDS. Todo levantado con **Terraform**.
+viven en **PostgreSQL** sobre RDS. El trabajo lento viaja por **RabbitMQ**: el
+backend publica un evento y el microservicio `notificaciones` lo consume (avisar
+al aprobador, generar el comprobante, registrar la auditoría), con reintentos y
+DLQ; `rabbit-admin` crea y elimina colas, exchanges y bindings por REST. Todo
+levantado con **Terraform**.
 
 ## Arquitectura (el permiso viaja en el token)
 
@@ -17,6 +21,8 @@ Usuario → Front (React/Amplify) → Cognito ─(login PKCE)→ tokens
    grupo del usuario → Lambda user-token-ms → claim scope → access token
    quien se registra solo → Lambda user-signup-ms → grupo solicitantes
 Front → API Gateway ─(valida JWT + authorization_scopes)→ Spring Boot (ECS) → RDS
+Spring Boot ─(evento)→ RabbitMQ (EC2, 3 nodos) → notificaciones (ECS) ─(si falla)→ DLQ
+rabbit-admin (ECS) ─(JWT)→ crea y elimina colas, exchanges y bindings
    401 = sin token o inválido      403 = token válido sin el scope de la ruta
 ```
 
