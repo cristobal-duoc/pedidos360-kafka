@@ -4,7 +4,7 @@
 # a la IP nueva de la task. Ejecutar desde la raíz del repo, con el lab arrancado.
 set -euo pipefail
 
-ESTUDIANTE="${ESTUDIANTE:-martinez}"   # cámbialo o expórtalo
+ESTUDIANTE="${ESTUDIANTE:-martinez}"   # sufijo de los recursos; se puede exportar antes
 REGION="${AWS_REGION:-us-east-1}"
 
 echo "==> Leyendo datos de Terraform"

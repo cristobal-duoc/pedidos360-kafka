@@ -113,7 +113,7 @@ resource "aws_instance" "rabbitmq" {
   user_data_replace_on_change = true
 
   # Amazon publica AMIs nuevas cada pocas semanas: sin esto, el siguiente apply
-  # (p. ej. revivir.sh el dia de la presentacion) recrearia la EC2 y el cluster.
+  # (p. ej. revivir.sh tras reiniciar el lab) recrearia la EC2 y el cluster.
   lifecycle {
     ignore_changes = [ami]
   }

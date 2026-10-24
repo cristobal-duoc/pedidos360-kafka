@@ -18,7 +18,7 @@ resource "aws_cognito_user_pool" "pool" {
 
   # Auto-registro habilitado: el Hosted UI muestra "Sign up" y el usuario crea
   # su cuenta solo, verificandola por codigo al correo (auto_verified_attributes).
-  # La rubrica pide exactamente eso; con true el enlace no aparece.
+  # Con true, el enlace "Sign up" no aparece.
   admin_create_user_config {
     allow_admin_create_user_only = false
   }

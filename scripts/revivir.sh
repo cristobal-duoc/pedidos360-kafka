@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Revive el sistema tras reiniciar el Learner Lab, SIN reconstruir la imagen
-# (ya esta en ECR). Usalo el dia de la presentacion; publicar-ecs.sh solo hace
+# (ya esta en ECR). Se usa cada vez que se reinicia el lab; publicar-ecs.sh solo hace
 # falta cuando cambiaste el codigo del backend.
 #
 #   1. Start Lab en AWS Academy

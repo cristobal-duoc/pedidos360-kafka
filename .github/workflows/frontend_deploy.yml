@@ -5,7 +5,7 @@ on:
   # push: { branches: [main], paths: ["frontend/**"] }
 
 env:
-  ESTUDIANTE: martinez            # cámbialo por el tuyo
+  ESTUDIANTE: martinez            # sufijo de los recursos (var.estudiante en Terraform)
   AWS_REGION: us-east-1
 
 jobs:

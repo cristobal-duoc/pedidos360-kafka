@@ -44,7 +44,7 @@ mensajeria:
     espera-inicial-ms: 1000
     multiplicador: 2
 
-# Para la demo: un motivo con esta marca simula que el servidor de correo (o el de
+# Simulacion de fallo: un motivo con esta marca simula que el servidor de correo (o el de
 # documentos) no responde. Asi se ven los reintentos y el mensaje llegando a la DLQ.
 simulacion:
   marca-fallo: "[falla]"

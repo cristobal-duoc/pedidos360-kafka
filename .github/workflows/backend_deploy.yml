@@ -8,7 +8,7 @@ on:
 #   AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_SESSION_TOKEN
 # Se vencen cada sesión del Learner Lab: actualízalos antes de correr.
 env:
-  ESTUDIANTE: martinez            # cámbialo por el tuyo
+  ESTUDIANTE: martinez            # sufijo de los recursos (var.estudiante en Terraform)
   AWS_REGION: us-east-1
 
 jobs:
