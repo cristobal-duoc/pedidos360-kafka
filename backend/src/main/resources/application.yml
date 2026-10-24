@@ -9,7 +9,7 @@ spring:
         jwt:
           # El emisor de los tokens: el user pool. En ECS lo inyecta Terraform (COGNITO_ISSUER_URI):
           # si el lab se reinicia y el pool se recrea con otro id, no hay que tocar el codigo.
-          issuer-uri: ${COGNITO_ISSUER_URI:https://cognito-idp.us-east-1.amazonaws.com/us-east-1_jV63RQ8jF}
+          issuer-uri: ${COGNITO_ISSUER_URI:https://cognito-idp.us-east-1.amazonaws.com/us-east-1_liLLqLOCH}
 
   # ---------- Base de datos ----------
   # sslmode=require NO es opcional: RDS rechaza toda conexion en claro.
@@ -38,7 +38,7 @@ spring:
 
 # El client_id del cliente SPA. En ECS lo inyecta Terraform (COGNITO_CLIENT_ID).
 cognito:
-  client-id: ${COGNITO_CLIENT_ID:5rmbpaeusn73rpqcj6dt3m6l59}
+  client-id: ${COGNITO_CLIENT_ID:3849j7js478hf218snhck2ddhp}
 
 # ---------- Mensajeria: TODOS los nombres en un solo lugar ----------
 # Los lee MensajeriaProperties. Ninguna clase los escribe a mano.

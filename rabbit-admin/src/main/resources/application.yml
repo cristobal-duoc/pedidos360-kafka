@@ -17,11 +17,11 @@ spring:
     oauth2:
       resourceserver:
         jwt:
-          issuer-uri: ${COGNITO_ISSUER_URI:https://cognito-idp.us-east-1.amazonaws.com/us-east-1_jV63RQ8jF}
+          issuer-uri: ${COGNITO_ISSUER_URI:https://cognito-idp.us-east-1.amazonaws.com/us-east-1_liLLqLOCH}
 
 # El client_id del cliente SPA: el access token de Cognito lo trae en vez de "aud".
 cognito:
-  client-id: ${COGNITO_CLIENT_ID:5rmbpaeusn73rpqcj6dt3m6l59}
+  client-id: ${COGNITO_CLIENT_ID:3849j7js478hf218snhck2ddhp}
 
 # El 8080 es del backend de solicitudes.
 server:
