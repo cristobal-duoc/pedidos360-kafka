@@ -74,7 +74,6 @@ rabbitmq-cluster/    docker-compose del cluster de RabbitMQ (3 nodos, colas quor
 frontend/            React + Vite
 terraform/           cognito · lambda · apigateway · rds · ecs · amplify · rabbitmq · mensajeria
 scripts/             publicar-ecs.sh · publicar-mensajeria.sh · revivir.sh
-rabbitmq-tutorials/  ejercicio de la guía 2.1.2 (Hello World); no es parte del sistema
 ```
 
 ## Levantarlo
