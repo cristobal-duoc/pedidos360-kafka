@@ -20,7 +20,7 @@ import org.springframework.stereotype.Component;
 //   error recuperable            -> se reintenta (Reintentos); si se agotan, basicNack -> DLQ.
 //   mensaje invalido             -> sin reintentos: basicNack -> DLQ.
 //   error inesperado (un bug)    -> sin reintentos: basicNack -> DLQ.
-// basicNack siempre con requeue=false: devolverlo a la cola crearia un bucle infinito.
+// basicNack siempre con requeue=false: devolverlo a la cola lo reentregaria en bucle.
 // Con requeue=false RabbitMQ lo manda al DLX configurado en la cola, que lo deja en la DLQ.
 @Component
 public class NotificacionListener {

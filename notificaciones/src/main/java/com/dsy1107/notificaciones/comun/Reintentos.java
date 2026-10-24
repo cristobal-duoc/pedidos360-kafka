@@ -10,8 +10,8 @@ import org.springframework.stereotype.Component;
 // sale de inmediato, porque reintentarlo no cambiaria nada.
 //
 // Se reintenta dentro del consumidor (y no devolviendo el mensaje a la cola con
-// requeue=true) para no crear un bucle infinito: el mensaje vuelve a la cabeza de
-// la cola y se reprocesaria sin fin, bloqueando a los demas.
+// requeue=true) para no crear un bucle: el mensaje se reentregaria al instante y
+// fallaria una y otra vez (en quorum, hasta el limite de 20 entregas de RabbitMQ 4).
 @Component
 public class Reintentos {
 
