@@ -2,6 +2,7 @@ package com.dsy1107.pedidos360;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
+import com.dsy1107.pedidos360.mensajeria.PublicadorEventos;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.TestPropertySource;
@@ -21,6 +22,9 @@ class Pedidos360ApplicationTests {
 
     @MockBean
     JwtDecoder jwtDecoder;
+
+    @MockBean
+    PublicadorEventos eventos;
 
     @Test
     void contextLoads() {

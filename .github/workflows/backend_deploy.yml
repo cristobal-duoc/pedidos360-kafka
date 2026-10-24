@@ -34,7 +34,8 @@ jobs:
           docker push "$ECR:latest"
           aws ecs update-service \
             --cluster dsy1107-backend-${ESTUDIANTE} \
-            --service backend --force-new-deployment
+            --service backend --task-definition dsy1107-backend-${ESTUDIANTE} \
+            --force-new-deployment
 
       # Sin balanceador, cada task nueva estrena IP publica. Si no se reapunta
       # la integracion, el gateway sigue llamando a la IP muerta y responde 503

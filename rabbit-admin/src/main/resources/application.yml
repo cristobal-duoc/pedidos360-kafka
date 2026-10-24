@@ -1,0 +1,28 @@
+spring:
+  application:
+    name: rabbit-admin
+
+  # ---------- RabbitMQ: los TRES nodos del cluster ----------
+  # RABBITMQ_ADDRESSES lo inyecta ECS. En local, el cluster de rabbitmq-cluster/.
+  rabbitmq:
+    addresses: ${RABBITMQ_ADDRESSES:localhost:5672,localhost:5673,localhost:5674}
+    address-shuffle-mode: random
+    username: ${RABBITMQ_USER:admin}
+    password: ${RABBITMQ_PASS:admin123}
+    # Sin esto, con el broker inalcanzable cada peticion esperaria 60 s por nodo.
+    connection-timeout: 3s
+
+  # ---------- Seguridad: validar el JWT de Cognito, igual que el backend ----------
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${COGNITO_ISSUER_URI:https://cognito-idp.us-east-1.amazonaws.com/us-east-1_jV63RQ8jF}
+
+# El client_id del cliente SPA: el access token de Cognito lo trae en vez de "aud".
+cognito:
+  client-id: ${COGNITO_CLIENT_ID:5rmbpaeusn73rpqcj6dt3m6l59}
+
+# El 8080 es del backend de solicitudes.
+server:
+  port: 8097

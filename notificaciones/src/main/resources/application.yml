@@ -1,0 +1,50 @@
+spring:
+  application:
+    name: notificaciones
+
+  # ---------- RabbitMQ: los TRES nodos del cluster ----------
+  # RABBITMQ_ADDRESSES lo inyecta ECS. En local, el cluster de rabbitmq-cluster/.
+  rabbitmq:
+    addresses: ${RABBITMQ_ADDRESSES:localhost:5672,localhost:5673,localhost:5674}
+    address-shuffle-mode: random
+    username: ${RABBITMQ_USER:admin}
+    password: ${RABBITMQ_PASS:admin123}
+    listener:
+      simple:
+        # ACK MANUAL para todos los @RabbitListener: cada consumidor decide cuando
+        # confirmar, con basicAck o basicNack explicitos.
+        acknowledge-mode: manual
+        # Un mensaje a la vez por consumidor (fair dispatch).
+        prefetch: 1
+
+# ---------- Mensajeria: TODOS los nombres en un solo lugar ----------
+# Los lee MensajeriaProperties. Ninguna clase escribe un nombre a mano.
+mensajeria:
+  exchanges:
+    solicitudes: pedidos360.solicitudes   # direct: trabajo dirigido
+    eventos: pedidos360.eventos           # topic: difusion de eventos
+    dlx: pedidos360.dlx                   # direct: recibe los mensajes muertos
+  # Una ruta por caso de uso: la cola, su DLQ y la routing key que la alimenta.
+  colas:
+    notificaciones:                       # avisar al aprobador que hay una solicitud nueva
+      nombre: notificaciones.aprobador
+      dlq: notificaciones.aprobador.dlq
+      routing-key: solicitud.creada
+    comprobantes:                         # generar el comprobante de una solicitud aprobada
+      nombre: documentos.comprobante
+      dlq: documentos.comprobante.dlq
+      routing-key: solicitud.aprobada
+    auditoria:                            # registrar TODO evento de solicitudes
+      nombre: auditoria.solicitudes
+      dlq: auditoria.solicitudes.dlq
+      routing-key: "solicitud.#"          # patron topic: cualquier solicitud.<algo>
+  # Errores recuperables: cuantas veces se intenta antes de mandar a la DLQ.
+  reintentos:
+    maximo: 3
+    espera-inicial-ms: 1000
+    multiplicador: 2
+
+# Para la demo: un motivo con esta marca simula que el servidor de correo (o el de
+# documentos) no responde. Asi se ven los reintentos y el mensaje llegando a la DLQ.
+simulacion:
+  marca-fallo: "[falla]"

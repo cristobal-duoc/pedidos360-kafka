@@ -1,0 +1,40 @@
+#!/bin/bash
+# Arranque de la EC2 del cluster de RabbitMQ (user_data). Corre UNA vez, al crear
+# la instancia: instala Docker y Docker Compose, deja en /opt/rabbitmq-cluster los
+# mismos archivos de rabbitmq-cluster/ del repo y levanta los tres nodos.
+#
+# Despues, Docker los vuelve a levantar solo en cada reinicio (restart: unless-stopped),
+# por ejemplo cuando el Learner Lab se apaga y se vuelve a encender.
+set -euxo pipefail
+
+dnf install -y docker
+systemctl enable --now docker
+usermod -aG docker ec2-user   # para usar docker sin sudo al entrar por EC2 Instance Connect
+
+# Docker Compose (plugin): Amazon Linux no lo trae en sus repositorios.
+mkdir -p /usr/local/lib/docker/cli-plugins
+curl -fsSL "https://github.com/docker/compose/releases/download/v2.29.7/docker-compose-linux-x86_64" \
+  -o /usr/local/lib/docker/cli-plugins/docker-compose
+chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
+
+mkdir -p /opt/rabbitmq-cluster
+cd /opt/rabbitmq-cluster
+
+cat > docker-compose.yml <<'COMPOSE'
+${compose}
+COMPOSE
+
+cat > rabbitmq.conf <<'CONF'
+${conf}
+CONF
+
+# Usuario y clave reales: el compose los lee de aqui.
+cat > .env <<'ENV'
+RABBITMQ_USER=${usuario}
+RABBITMQ_PASS=${clave}
+ENV
+chmod 600 .env
+chown -R ec2-user:ec2-user /opt/rabbitmq-cluster
+
+docker compose up -d --wait
+docker exec rabbitmq-1 rabbitmqctl cluster_status

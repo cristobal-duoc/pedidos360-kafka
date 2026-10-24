@@ -22,8 +22,10 @@ echo "==> 3/5 Subiendo la imagen"
 docker push "${ECR}:latest"
 
 echo "==> 4/5 Redesplegando el servicio ECS"
+# --task-definition con solo la familia = su ULTIMA revision: la que Terraform
+# actualizo (p. ej. con las variables de RabbitMQ). Sin esto se reusaria la vieja.
 aws ecs update-service --cluster "${CLUSTER}" --service backend \
-  --force-new-deployment >/dev/null
+  --task-definition "dsy1107-backend-${ESTUDIANTE}" --force-new-deployment >/dev/null
 
 echo "==> 5/5 Esperando la IP pública de la task nueva"
 aws ecs wait services-stable --cluster "${CLUSTER}" --services backend || true

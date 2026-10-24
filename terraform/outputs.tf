@@ -35,3 +35,14 @@ output "env_frontend" {
     VITE_API_URL=${aws_apigatewayv2_api.api.api_endpoint}
   ENV
 }
+
+# ---------- RabbitMQ ----------
+output "rabbitmq_paneles" {
+  description = "Los paneles de los tres nodos (usuario admin, clave db_pass)"
+  value       = [for p in [15672, 15673, 15674] : "http://${aws_instance.rabbitmq.public_ip}:${p}"]
+}
+
+output "rabbitmq_ec2_id" {
+  description = "Para entrar por EC2 Instance Connect y ver docker compose"
+  value       = aws_instance.rabbitmq.id
+}

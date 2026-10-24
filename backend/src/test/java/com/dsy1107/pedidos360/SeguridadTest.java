@@ -8,6 +8,12 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+
+import com.dsy1107.pedidos360.mensajeria.PublicadorEventos;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -53,6 +59,11 @@ class SeguridadTest {
 
     @MockBean
     JwtDecoder jwtDecoder;
+
+    // RabbitMQ no existe en las pruebas: el publicador es un mock y se verifica
+    // que el controlador lo llame cuando corresponde.
+    @MockBean
+    PublicadorEventos eventos;
 
     private static RequestPostProcessor como(String grupo, String email) {
         return jwt()
@@ -175,6 +186,34 @@ class SeguridadTest {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$[*].solicitante",
                 org.hamcrest.Matchers.everyItem(org.hamcrest.Matchers.is("alumno@duocuc.cl"))));
+    }
+
+    @Test
+    void crear_publicaElEventoSolicitudCreada() throws Exception {
+        long id = crearComo("alumno@duocuc.cl");
+        verify(eventos).solicitudCreada(argThat(s -> s.getId() == id));
+    }
+
+    @Test
+    void resolver_publicaElEventoSolicitudResuelta() throws Exception {
+        long id = crearComo("alumno@duocuc.cl");
+        mockMvc.perform(put("/solicitudes/" + id + "/decision")
+                .with(como("aprobadores", "jefatura@duocuc.cl"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(UNA_DECISION))
+            .andExpect(status().isOk());
+        verify(eventos).solicitudResuelta(argThat(s -> s.getId() == id
+            && s.getEstado() == Solicitud.Estado.APROBADA));
+    }
+
+    @Test
+    void sinPermiso_noSePublicaNada() throws Exception {
+        mockMvc.perform(post("/solicitudes")
+                .with(como("aprobadores", "jefatura@duocuc.cl"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(UNA_SOLICITUD))
+            .andExpect(status().isForbidden());
+        verify(eventos, never()).solicitudCreada(any());
     }
 
     // El health check de ECS tiene que responder sin token: si exigiera

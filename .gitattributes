@@ -2,3 +2,6 @@
 *.sh text eol=lf
 *.mjs text eol=lf
 mvnw text eol=lf
+# El user_data de la EC2 y los archivos del cluster corren en Linux: con CRLF no arrancan.
+*.tftpl text eol=lf
+rabbitmq-cluster/** text eol=lf

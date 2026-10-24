@@ -92,13 +92,13 @@ resource "aws_ecs_task_definition" "backend" {
     name         = "backend"
     image        = "${aws_ecr_repository.backend.repository_url}:latest"
     portMappings = [{ containerPort = 8080 }]
-    environment = [
+    environment = concat([
       # sslmode=require NO es opcional: RDS rechaza toda conexion en claro.
       { name = "DB_HOST", value = aws_db_instance.pedidos.address },
       { name = "DB_USER", value = var.db_user },
       { name = "DB_PASS", value = var.db_pass },
       { name = "DB_SSLMODE", value = "require" },
-    ]
+    ], local.env_rabbitmq, local.env_cognito) # mas el cluster de RabbitMQ y Cognito (rabbitmq.tf)
     healthCheck = {
       command     = ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"]
       interval    = 30

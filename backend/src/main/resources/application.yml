@@ -1,0 +1,68 @@
+spring:
+  application:
+    name: pedidos360
+
+  # ---------- Seguridad: validar el JWT de Cognito ----------
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          # El emisor de los tokens: el user pool. En ECS lo inyecta Terraform (COGNITO_ISSUER_URI):
+          # si el lab se reinicia y el pool se recrea con otro id, no hay que tocar el codigo.
+          issuer-uri: ${COGNITO_ISSUER_URI:https://cognito-idp.us-east-1.amazonaws.com/us-east-1_jV63RQ8jF}
+
+  # ---------- Base de datos ----------
+  # sslmode=require NO es opcional: RDS rechaza toda conexion en claro.
+  # DB_HOST/DB_USER/DB_PASS/DB_SSLMODE los inyecta ECS (ecs.tf). En local, con Docker Postgres.
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:5432/pedidos360?sslmode=${DB_SSLMODE:disable}
+    username: ${DB_USER:postgres}
+    password: ${DB_PASS:postgres}
+
+  # JPA crea/actualiza la tabla a partir de tus @Entity.
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+
+  # ---------- RabbitMQ: los TRES nodos del cluster ----------
+  # Con un solo nodo en addresses el cluster no sirve: si cae ese, no hay broker.
+  # RABBITMQ_ADDRESSES lo inyecta ECS. En local, el cluster de rabbitmq-cluster/.
+  rabbitmq:
+    addresses: ${RABBITMQ_ADDRESSES:localhost:5672,localhost:5673,localhost:5674}
+    address-shuffle-mode: random   # cada instancia parte por un nodo al azar
+    username: ${RABBITMQ_USER:admin}
+    password: ${RABBITMQ_PASS:admin123}
+    # Sin esto, con RabbitMQ caido cada POST esperaria 60 s antes de responder.
+    connection-timeout: 3s
+
+# El client_id del cliente SPA. En ECS lo inyecta Terraform (COGNITO_CLIENT_ID).
+cognito:
+  client-id: ${COGNITO_CLIENT_ID:5rmbpaeusn73rpqcj6dt3m6l59}
+
+# ---------- Mensajeria: TODOS los nombres en un solo lugar ----------
+# Los lee MensajeriaProperties. Ninguna clase los escribe a mano.
+mensajeria:
+  exchanges:
+    solicitudes: pedidos360.solicitudes   # direct
+    eventos: pedidos360.eventos           # topic
+  routing-keys:
+    creada: solicitud.creada
+    aprobada: solicitud.aprobada
+    rechazada: solicitud.rechazada
+
+# ---------- Actuator (health check de ECS) ----------
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      probes:
+        enabled: true
+  # RabbitMQ caido NO puede marcar al backend como enfermo: ECS reiniciaria la
+  # task en bucle y se caeria tambien la API de solicitudes.
+  health:
+    rabbit:
+      enabled: false

@@ -24,7 +24,7 @@ terraform -chdir=terraform apply -auto-approve
 
 echo "==> 2/5 Asegurando que el servicio ECS tenga una task"
 aws ecs update-service --cluster "${CLUSTER}" --service backend \
-  --desired-count 1 >/dev/null
+  --task-definition "dsy1107-backend-${ESTUDIANTE}" --desired-count 1 >/dev/null
 aws ecs wait services-stable --cluster "${CLUSTER}" --services backend || true
 
 echo "==> 3/5 Resolviendo la IP publica de la task"

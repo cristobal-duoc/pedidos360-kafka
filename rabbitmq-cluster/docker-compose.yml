@@ -1,0 +1,64 @@
+# Cluster de RabbitMQ: tres nodos que se comportan como un solo broker.
+# Basado en la clase practica 2.3.1. Es el MISMO archivo que corre en la nube:
+# Terraform lo copia a la EC2 (terraform/rabbitmq.tf) y lo levanta ahi.
+#
+#   docker compose up -d --wait
+#   docker exec rabbitmq-1 rabbitmqctl cluster_status
+#
+# Paneles: http://localhost:15672, :15673 y :15674 (admin / admin123 en local).
+# En la nube, usuario y clave vienen del archivo .env que escribe Terraform.
+
+x-nodo: &nodo
+  # El espejo de AWS de la imagen oficial: Docker Hub limita las descargas desde EC2.
+  image: public.ecr.aws/docker/library/rabbitmq:4-management
+  restart: unless-stopped
+  environment:
+    RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-admin}
+    RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS:-admin123}
+    # La misma en los tres: es el secreto con que los nodos se reconocen. Viaja por
+    # el puerto 25672, que no se publica: solo lo usan los nodos entre ellos.
+    RABBITMQ_ERLANG_COOKIE: "secret_cookie_value"
+  healthcheck:
+    test: ["CMD", "rabbitmq-diagnostics", "-q", "check_running"]
+    interval: 10s
+    timeout: 10s
+    retries: 12
+  networks: [rabbitmq_cluster]
+
+services:
+  rabbitmq-1:
+    <<: *nodo
+    container_name: rabbitmq-1
+    hostname: rabbitmq-1          # => el nodo se llama rabbit@rabbitmq-1
+    ports: ["5672:5672", "15672:15672"]
+    volumes:
+      - rabbitmq_data_1:/var/lib/rabbitmq
+      - ./rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+
+  rabbitmq-2:
+    <<: *nodo
+    container_name: rabbitmq-2
+    hostname: rabbitmq-2
+    ports: ["5673:5672", "15673:15672"]
+    volumes:
+      - rabbitmq_data_2:/var/lib/rabbitmq
+      - ./rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+
+  rabbitmq-3:
+    <<: *nodo
+    container_name: rabbitmq-3
+    hostname: rabbitmq-3
+    ports: ["5674:5672", "15674:15672"]
+    volumes:
+      - rabbitmq_data_3:/var/lib/rabbitmq
+      - ./rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+
+# Un volumen por nodo: si dos lo compartieran, se corromperian entre si.
+volumes:
+  rabbitmq_data_1:
+  rabbitmq_data_2:
+  rabbitmq_data_3:
+
+networks:
+  rabbitmq_cluster:
+    driver: bridge

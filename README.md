@@ -67,10 +67,14 @@ Además, el rol no basta: un solicitante solo ve, edita y borra **sus** solicitu
 
 ```
 .github/workflows/   frontend_compile · frontend_deploy · backend_compile · backend_deploy
-backend/             Spring Boot (Java 21, Maven) + Dockerfile
+backend/             Spring Boot (Java 21, Maven) + Dockerfile · publica los eventos en RabbitMQ
+notificaciones/      microservicio consumidor: avisos, comprobantes y auditoría, con sus DLQ
+rabbit-admin/        microservicio administrador: API REST /api/rabbitmq (colas, exchanges, bindings)
+rabbitmq-cluster/    docker-compose del cluster de RabbitMQ (3 nodos, colas quorum)
 frontend/            React + Vite
-terraform/           cognito · lambda · apigateway · rds · ecs · amplify
-scripts/             publicar-ecs.sh · revivir.sh
+terraform/           cognito · lambda · apigateway · rds · ecs · amplify · rabbitmq · mensajeria
+scripts/             publicar-ecs.sh · publicar-mensajeria.sh · revivir.sh
+rabbitmq-tutorials/  ejercicio de la guía 2.1.2 (Hello World); no es parte del sistema
 ```
 
 ## Levantarlo
@@ -82,11 +86,13 @@ cp terraform/terraform.tfvars.example terraform/terraform.tfvars   # pon tu db_p
 cd terraform && terraform init && terraform apply                  # crea todo (5-10 min)
 terraform output -raw env_frontend > ../frontend/.env.local        # config del front
 cd .. && scripts/publicar-ecs.sh                                   # publica el backend en ECS
+scripts/publicar-mensajeria.sh                                     # publica notificaciones y rabbit-admin
 ```
 
-Configura el backend con tus valores de Cognito en
-`backend/src/main/resources/application.properties` (issuer-uri y client-id, de
-`terraform output`). El front local: `cd frontend && npm install && npm run dev`.
+Terraform inyecta en ECS los datos de Cognito (`COGNITO_ISSUER_URI`,
+`COGNITO_CLIENT_ID`) y del cluster (`RABBITMQ_ADDRESSES`); en local se usan los
+valores por defecto de cada `application.yml`. El front local:
+`cd frontend && npm install && npm run dev`.
 
 Si el lab se apagó y el código no cambió, basta con `scripts/revivir.sh`: repone
 la infraestructura, espera a la task, reapunta las integraciones del gateway a su

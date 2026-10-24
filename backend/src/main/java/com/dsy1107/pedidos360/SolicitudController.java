@@ -1,5 +1,6 @@
 package com.dsy1107.pedidos360;
 
+import com.dsy1107.pedidos360.mensajeria.PublicadorEventos;
 import java.time.Instant;
 import java.util.List;
 import org.springframework.http.ResponseEntity;
@@ -22,9 +23,11 @@ import org.springframework.web.bind.annotation.*;
 public class SolicitudController {
 
     private final SolicitudRepository repo;
+    private final PublicadorEventos eventos;
 
-    public SolicitudController(SolicitudRepository repo) {
+    public SolicitudController(SolicitudRepository repo, PublicadorEventos eventos) {
         this.repo = repo;
+        this.eventos = eventos;
     }
 
     // El email lo agrega la Lambda user-token-ms al access token; si faltara,
@@ -52,8 +55,10 @@ public class SolicitudController {
     public Solicitud crear(@RequestBody Solicitud entrada, @AuthenticationPrincipal Jwt jwt) {
         // El solicitante y el estado no se aceptan del cuerpo: nadie crea
         // solicitudes a nombre de otro, ni nace aprobada.
-        Solicitud s = new Solicitud(quienEs(jwt), entrada.getMotivo(), entrada.getDias());
-        return repo.save(s);
+        Solicitud s = repo.save(new Solicitud(quienEs(jwt), entrada.getMotivo(), entrada.getDias()));
+        // Primero se guarda; despues se avisa. Si RabbitMQ falla, la solicitud ya existe.
+        eventos.solicitudCreada(s);
+        return s;
     }
 
     @PutMapping("/{id}")
@@ -109,7 +114,9 @@ public class SolicitudController {
             s.setComentario(decision.comentario());
             s.setResueltaPor(quienEs(jwt));
             s.setResuelta(Instant.now());
-            return ResponseEntity.ok(repo.save(s));
+            Solicitud resuelta = repo.save(s);
+            eventos.solicitudResuelta(resuelta);
+            return ResponseEntity.ok(resuelta);
         }).orElse(ResponseEntity.notFound().build());
     }
 }
