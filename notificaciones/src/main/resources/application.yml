@@ -17,6 +17,34 @@ spring:
         # Un mensaje a la vez por consumidor (fair dispatch).
         prefetch: 1
 
+  # ---------- Kafka: los TRES brokers de kafka-cluster/ ----------
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092,localhost:9093,localhost:9094}
+    consumer:
+      # Un consumer group nuevo lee el topico desde el principio.
+      auto-offset-reset: earliest
+      # El offset lo confirma el contenedor recien cuando el evento se proceso.
+      enable-auto-commit: false
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      # El valor llega como bytes y lo lee LectorEventos: un JSON roto es un error manejado.
+      value-deserializer: org.apache.kafka.common.serialization.ByteArrayDeserializer
+    listener:
+      ack-mode: record
+      # Tres consumidores por grupo, uno por particion: la carga se reparte entre ellos.
+      concurrency: 3
+
+# ---------- Kafka: topicos y consumer groups ----------
+# Los lee KafkaProperties. Ninguna clase escribe un nombre a mano.
+kafka-eventos:
+  topicos:
+    creadas: pedidos360.solicitudes.creadas
+    resueltas: pedidos360.solicitudes.resueltas
+  # Un grupo por responsabilidad: cada grupo recibe TODOS los eventos de sus topicos,
+  # y dentro de cada grupo las particiones se reparten entre sus consumidores.
+  grupos:
+    notificaciones: notificaciones-aprobador   # avisar al aprobador (lee creadas)
+    auditoria: auditoria-solicitudes           # registrar todo (lee creadas y resueltas)
+
 # ---------- Mensajeria: TODOS los nombres en un solo lugar ----------
 # Los lee MensajeriaProperties. Ninguna clase escribe un nombre a mano.
 mensajeria:

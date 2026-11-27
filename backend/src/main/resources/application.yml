@@ -36,6 +36,44 @@ spring:
     # Sin esto, con RabbitMQ caido cada POST esperaria 60 s antes de responder.
     connection-timeout: 3s
 
+  # ---------- Kafka: los TRES brokers de kafka-cluster/ ----------
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092,localhost:9093,localhost:9094}
+    producer:
+      # Clave = id de la solicitud: todos sus eventos caen en la misma particion, en orden.
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      # Valor = el DTO SolicitudEvento en JSON.
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      # Confirmado solo cuando lo tienen las replicas al dia (min.insync.replicas=2).
+      acks: all
+      retries: 3
+      properties:
+        enable.idempotence: true                # un reintento no duplica el evento
+        spring.json.add.type.headers: false     # el consumidor no depende de esta clase Java
+        max.block.ms: 3000                      # con Kafka caido, el POST no espera 60 s
+        delivery.timeout.ms: 10000
+        request.timeout.ms: 5000
+    admin:
+      # Con Kafka caido el backend arranca igual: los topicos se crean cuando vuelva.
+      operation-timeout: 10s
+
+# ---------- Topicos Kafka: nombre y administracion de cada flujo ----------
+# Los lee KafkaTopicosProperties. Ninguna clase escribe un nombre a mano.
+kafka-topicos:
+  creadas:                        # cada solicitud nueva: la consumen notificaciones y auditoria
+    nombre: pedidos360.solicitudes.creadas
+    particiones: 3
+    replicas: 3
+    retencion-ms: 604800000       # 7 dias: solo sirve mientras la solicitud espera respuesta
+    cleanup-policy: delete
+  resueltas:                      # cada aprobacion o rechazo: la consume auditoria
+    nombre: pedidos360.solicitudes.resueltas
+    particiones: 3
+    replicas: 3
+    retencion-ms: 2592000000      # 30 dias: historial de decisiones para auditoria
+    cleanup-policy: delete
+  min-insync-replicas: 2
+
 # El client_id del cliente SPA. En ECS lo inyecta Terraform (COGNITO_CLIENT_ID).
 cognito:
   client-id: ${COGNITO_CLIENT_ID:3849j7js478hf218snhck2ddhp}

@@ -21,9 +21,14 @@ public class LectorEventos {
     }
 
     public SolicitudEvento leer(Message mensaje) {
+        return leer(mensaje.getBody());
+    }
+
+    // El mismo contrato para los eventos que llegan por Kafka.
+    public SolicitudEvento leer(byte[] cuerpo) {
         SolicitudEvento evento;
         try {
-            evento = json.readValue(mensaje.getBody(), SolicitudEvento.class);
+            evento = json.readValue(cuerpo, SolicitudEvento.class);
         } catch (JacksonException e) {
             throw new MensajeInvalidoException("El cuerpo no es un evento JSON valido", e);
         }

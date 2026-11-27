@@ -34,6 +34,11 @@
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-amqp</artifactId>
 		</dependency>
+		<!-- Kafka: consumidores de los topicos de solicitudes -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-kafka</artifactId>
+		</dependency>
 		<!-- JSON: para leer el cuerpo de cada evento -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
