@@ -34,7 +34,7 @@ spring:
       concurrency: 3
 
 # ---------- Kafka: topicos y consumer groups ----------
-# Los lee KafkaProperties. Ninguna clase escribe un nombre a mano.
+# Los lee KafkaEventosProperties. Ninguna clase escribe un nombre a mano.
 kafka-eventos:
   topicos:
     creadas: pedidos360.solicitudes.creadas
