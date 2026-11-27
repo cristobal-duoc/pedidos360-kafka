@@ -49,7 +49,6 @@ spring:
       retries: 3
       properties:
         enable.idempotence: true                # un reintento no duplica el evento
-        spring.json.add.type.headers: false     # el consumidor no depende de esta clase Java
         max.block.ms: 3000                      # con Kafka caido, el POST no espera 60 s
         delivery.timeout.ms: 10000
         request.timeout.ms: 5000

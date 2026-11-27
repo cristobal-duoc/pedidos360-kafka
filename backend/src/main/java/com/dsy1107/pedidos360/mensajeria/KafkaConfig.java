@@ -1,11 +1,15 @@
 package com.dsy1107.pedidos360.mensajeria;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.common.config.TopicConfig;
+import org.springframework.boot.autoconfigure.kafka.DefaultKafkaProducerFactoryCustomizer;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.config.TopicBuilder;
+import org.springframework.kafka.core.DefaultKafkaProducerFactory;
+import org.springframework.kafka.support.serializer.JsonSerializer;
 
 // Configuracion Kafka del microservicio de solicitudes (PRODUCTOR).
 //
@@ -14,6 +18,15 @@ import org.springframework.kafka.config.TopicBuilder;
 @Configuration
 @EnableConfigurationProperties(KafkaTopicosProperties.class)
 public class KafkaConfig {
+
+    // El DTO viaja como JSON con el ObjectMapper de Spring: las fechas en ISO-8601,
+    // igual que en RabbitMQ (sin esto, el Instant saldria como un numero).
+    @Bean
+    @SuppressWarnings("unchecked")
+    DefaultKafkaProducerFactoryCustomizer serializadorJson(ObjectMapper objectMapper) {
+        return fabrica -> ((DefaultKafkaProducerFactory<Object, Object>) fabrica)
+            .setValueSerializerSupplier(() -> new JsonSerializer<Object>(objectMapper).noTypeInfo()); // sin cabeceras de tipo: el consumidor no depende de esta clase Java
+    }
 
     @Bean
     NewTopic topicoCreadas(KafkaTopicosProperties props) {
