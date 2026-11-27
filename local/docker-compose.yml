@@ -1,0 +1,28 @@
+# Todo lo que en AWS da la nube, corriendo en el PC: el IDaaS (Keycloak, en lugar de
+# Cognito) y la base de datos (Postgres, en lugar de RDS).
+#
+#   docker compose up -d
+#
+# Keycloak:  http://localhost:8180  (realm pedidos360, importado de realm-pedidos360.json)
+# Postgres:  localhost:5432, base pedidos360
+
+services:
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0
+    container_name: keycloak
+    command: ["start-dev", "--import-realm", "--http-port=8180"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+    ports: ["8180:8180"]
+    volumes:
+      - ./realm-pedidos360.json:/opt/keycloak/data/import/realm-pedidos360.json:ro
+
+  postgres:
+    image: postgres:16
+    container_name: postgres
+    environment:
+      POSTGRES_DB: pedidos360
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports: ["5432:5432"]

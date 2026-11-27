@@ -9,6 +9,16 @@ const cfg = {
   // aquí: los concede el Lambda según el grupo del usuario.
   scopes: 'openid email profile',
 }
+
+// Las rutas del IDaaS. Por defecto, las de Cognito; con Keycloak en local
+// (npm run dev:local) llegan de .env.keycloak.
+const rutas = {
+  authorize: import.meta.env.VITE_OIDC_AUTHORIZE_PATH ?? '/oauth2/authorize',
+  token: import.meta.env.VITE_OIDC_TOKEN_PATH ?? '/oauth2/token',
+  logout: import.meta.env.VITE_OIDC_LOGOUT_PATH ?? '/logout',
+  // Cognito vuelve a logout_uri; el estandar OIDC (Keycloak) a post_logout_redirect_uri.
+  parametroLogout: import.meta.env.VITE_OIDC_LOGOUT_PARAM ?? 'logout_uri',
+}
 export const config = cfg
 
 export function configuracionIncompleta() {
@@ -57,7 +67,7 @@ export async function login() {
     code_challenge_method: 'S256',
   })
   // La contraseña se escribe en Cognito, nunca aquí.
-  window.location.assign(`${cfg.dominio}/oauth2/authorize?${params}`)
+  window.location.assign(`${cfg.dominio}${rutas.authorize}?${params}`)
 }
 
 // ---------- Pasos 6-9: volver y canjear el code en /token ----------
@@ -89,7 +99,7 @@ export async function procesarRetorno() {
   }
   const verifier = sessionStorage.getItem(K_VERIFIER)
   const nonceEsperado = sessionStorage.getItem(K_NONCE)
-  const r = await fetch(`${cfg.dominio}/oauth2/token`, {
+  const r = await fetch(`${cfg.dominio}${rutas.token}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
@@ -120,7 +130,7 @@ export async function procesarRetorno() {
 export async function renovarTokens() {
   const actuales = getTokens()
   if (!actuales?.refresh_token) return null
-  const r = await fetch(`${cfg.dominio}/oauth2/token`, {
+  const r = await fetch(`${cfg.dominio}${rutas.token}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
@@ -183,7 +193,7 @@ export function logout() {
   sessionStorage.removeItem(K_TOKENS)
   const params = new URLSearchParams({
     client_id: cfg.clientId,
-    logout_uri: cfg.redirectUri,
+    [rutas.parametroLogout]: cfg.redirectUri,
   })
-  window.location.assign(`${cfg.dominio}/logout?${params}`)
+  window.location.assign(`${cfg.dominio}${rutas.logout}?${params}`)
 }

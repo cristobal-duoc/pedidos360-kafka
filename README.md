@@ -77,6 +77,9 @@ backend/             Spring Boot (Java 21, Maven) + Dockerfile · publica los ev
 notificaciones/      microservicio consumidor: avisos, comprobantes y auditoría, con sus DLQ
 rabbit-admin/        microservicio administrador: API REST /api/rabbitmq (colas, exchanges, bindings)
 rabbitmq-cluster/    docker-compose del cluster de RabbitMQ (3 nodos, colas quorum)
+kafka-cluster/       docker-compose de Kafka: 3 Zookeeper, 3 brokers y Kafka UI
+kafka-admin/         microservicio administrador: API REST /api/kafka (topicos, configuraciones, consumer groups)
+local/               docker-compose de Keycloak (IDaaS) y Postgres para correr todo en el PC
 frontend/            React + Vite
 terraform/           cognito · lambda · apigateway · rds · ecs · amplify · rabbitmq · mensajeria
 scripts/             publicar-ecs.sh · publicar-mensajeria.sh · revivir.sh
@@ -103,6 +106,23 @@ Si el lab se apagó y el código no cambió, basta con `scripts/revivir.sh`: rep
 la infraestructura, espera a la task, reapunta las integraciones del gateway a su
 IP nueva y comprueba que responda 401 antes de darse por exitoso. No reconstruye
 la imagen, que ya está en ECR.
+
+### Todo en el PC, sin AWS
+
+Keycloak reemplaza a Cognito (mismos claims: `cognito:groups`, `client_id` y los
+scopes `solicitudes/*`) y Postgres a RDS. Cada linea en su propia terminal:
+
+```bash
+cd local && docker compose up -d                 # Keycloak :8180 y Postgres :5432
+cd kafka-cluster && docker compose up -d         # Kafka :9092-9094 y Kafka UI :8090
+cd rabbitmq-cluster && docker compose up -d --wait
+cd backend && COGNITO_ISSUER_URI=http://localhost:8180/realms/pedidos360 COGNITO_CLIENT_ID=pedidos360-front mvn spring-boot:run
+cd notificaciones && ./mvnw spring-boot:run
+cd kafka-admin && COGNITO_ISSUER_URI=http://localhost:8180/realms/pedidos360 COGNITO_CLIENT_ID=pedidos360-front ./mvnw spring-boot:run
+cd frontend && npm install && npm run dev:local  # http://localhost:5173
+```
+
+Los usuarios de prueba de Keycloak estan en `local/realm-pedidos360.json`.
 
 ## Usuarios de prueba
 
